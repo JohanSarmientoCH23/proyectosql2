@@ -306,9 +306,7 @@ PACIENTE
 CONTROL_GLAUCOMA
 ```
 
-
-
-![](C:\Users\johan\Downloads\imagen_conceptual.png)
+[](https://i.ibb.co/m5gDRPbG/imagen-conceptual.png)
 
 # 11. Modelo lógico esperado
 
@@ -345,9 +343,7 @@ plan
 
 El modelo completo deberá incluir todas las claves y cardinalidades.
 
-![](C:\Users\johan\Downloads\logico.png)
-
-​	
+​	[](https://i.ibb.co/SwKhKBMv/logico.png)
 
 # 12. Diagrama Entidad-Relación
 
@@ -395,6 +391,8 @@ La relación muchos a muchos entre consulta y diagnóstico deberá resolverse me
 VISIT_DIAGNOSES
 ```
 
+[](https://i.ibb.co/nq376QYn/erd-sistema-de-historia-cl-nica-oftalmol-gica.png)
+
 # 13. Proceso de normalización
 
 Uno de los componentes principales del proyecto será demostrar el proceso de normalización.
@@ -434,8 +432,6 @@ Latanoprost, Timolol
 ```
 
 Aquí existen valores multivaluados.
-
-![](C:\Users\johan\Downloads\erd-sistema-de-historia-clínica-oftalmológica.png)
 
 # 15. Primera Forma Normal —1FN
 
@@ -636,6 +632,101 @@ history_type_id
 description
 ```
 
+## Evidencia de la normalizacion 
+
+### Primera Forma Normal (1FN)
+
+La 1FN exige atributos atómicos, ausencia de grupos repetitivos y un solo valor por celda.
+
+**Incorrecto:**
+
+Guardar diagnósticos como una lista en un solo texto dentro de la consulta:
+
+```
+diagnosticos: "Glaucoma, Catarata"
+```
+
+**Correcto:** Se desacopla en la tabla de unión `VISIT_DIAGNOSIS`:   
+
+| **visit_id** | **diagnosis_id** | **diagnosis_type** |
+| ------------ | ---------------- | ------------------ |
+| 1            | 5                | Principal          |
+| 1            | 8                | Secundario         |
+
+### Segunda Forma Normal (2FN)
+
+La 2FN requiere estar en 1FN y **eliminar dependencias parciales** respecto a claves compuestas.
+
+**Ejemplo incorrecto:**
+
+Tener `diagnosis_name` dentro de la tabla intermedia con clave compuesta `(visit_id, diagnosis_id)`:
+
+Plaintext
+
+```
+VISIT_DIAGNOSIS (visit_id, diagnosis_id, diagnosis_name)
+```
+
+**Correcto:** Como `diagnosis_name` depende únicamente de `diagnosis_id` (y no de `visit_id`), la descripción pertenece exclusivamente a la tabla del catálogo `DIAGNOSIS`:   
+
+Plaintext
+
+```
+DIAGNOSIS (diagnosis_id [PK], code, name, description)
+VISIT_DIAGNOSIS (visit_id [PK, FK], diagnosis_id [PK, FK], diagnosis_type)
+```
+
+De igual forma, en la tabla de tratamientos y medicamentos `TREATMENT_MEDICATION`, los atributos de dosis y frecuencia dependerán de la clave compuesta completa `(treatment_id, medication_id)`. 
+
+### Tercera Forma Normal (3FN)
+
+La 3FN elimina **dependencias transitivas** (atributos no clave que dependen de otros atributos no clave).
+
+**Ejemplo incorrecto:** Guardar la ciudad y el departamento directamente en la persona o paciente:   
+
+Plaintext
+
+```
+PERSON (person_id, city_id, city_name, department_name, country)
+```
+
+Como `person_id -> city_id` y `city_id -> (city_name, department_name, country)`, los campos del municipio no deben almacenarse en `PERSON`.   
+
+**Correcto:** Se crean catálogos independientes:   
+
+Plaintext
+
+```
+CITY (city_id [PK], name, department, country)
+PERSON (person_id [PK], identification_number, first_name, last_name, city_id [FK])
+```
+
+### Forma Normal de Boyce-Codd (BCNF)
+
+En toda dependencia funcional determinante ($X \rightarrow Y$), $X$ debe ser una **superclave**.
+
+**Aplicación en el proyecto:** En la asignación de usuarios y roles (`USER_ACCOUNT` y `USER_ROLE`), la relación de credenciales entre la persona y su cuenta de usuario garantiza que cada dependencia funcional provenga directamente de una superclave única (`person_id` es clave alternativa/única en `USER_ACCOUNT`). 
+
+### Cuarta Forma Normal (4FN)
+
+La 4FN elimina **dependencias multivaluadas independientes** ($X \twoheadrightarrow Y$) para evitar productos cartesianos y combinaciones artificiales de datos.
+
+Un paciente puede tener $N$ alergias y $N$ antecedentes médicos. Si intentáramos registrar ambos atributos en una sola relación alrededor del paciente, se generarían duplicaciones innecesarias:   
+
+- Alergia A + Antecedente 1
+- Alergia A + Antecedente 2
+- Alergia B + Antecedente 1
+- Alergia B + Antecedente 2
+
+**Correcto:** Para alcanzar la 4FN en nuestro modelo, se separan en entidades totalmente independientes conectadas a la clave del paciente (`patient_id`):   
+
+Plaintext
+
+```
+PATIENT_ALLERGY (patient_id [PK, FK], allergy_id [PK, FK], reaction, severity)
+PATIENT_BACKGROUND (patient_background_id [PK], patient_id [FK], background_type_id [FK]
+```
+
 # 21. Implementación física en MySQL
 
 Después de validar el modelo lógico, deberá construirse el modelo físico mediante:
@@ -658,6 +749,8 @@ DATETIME
 DECIMAL
 BOOLEAN
 ```
+
+[](https://i.ibb.co/nq376QYn/erd-sistema-de-historia-cl-nica-oftalmol-gica.png)
 
 # 22. Restricciones
 
@@ -1063,20 +1156,806 @@ El proyecto podría exigir al estudiante construir al menos:
 Algunos ejemplos:
 
 1. ¿Cuántos pacientes se encuentran registrados?
+
+   Los pacientes registrados son 10
+
 2. ¿Cuántas consultas ha tenido cada paciente?
+
+   | [ paciente](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=patient&sql_query=SELECT+p.patient_id%2C+CONCAT(pe.first_name%2C+'+'%2C+pe.last_name)+AS+paciente%2C+COUNT(mv.visit_id)+AS+total_consultas FROM+patient+p JOIN+person+pe+ON+pe.person_id+%3D+p.person_id LEFT+JOIN+clinical_history+ch+ON+ch.patient_id+%3D+p.patient_id LEFT+JOIN+medical_visit+mv+ON+mv.clinical_history_id+%3D+ch.clinical_history_id GROUP+BY+p.patient_id%2C+pe.first_name%2C+pe.last_name+ ORDER+BY+`paciente`+ASC+&sql_signature=86f74dde3ef4c1a666c928dcc03298e60de89f5f5dbcd57519137cd3aaf1f85c&session_max_rows=25&is_browse_distinct=0) |                 | [total_consultas](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=patient&sql_query=SELECT+p.patient_id%2C+CONCAT(pe.first_name%2C+'+'%2C+pe.last_name)+AS+paciente%2C+COUNT(mv.visit_id)+AS+total_consultas FROM+patient+p JOIN+person+pe+ON+pe.person_id+%3D+p.person_id LEFT+JOIN+clinical_history+ch+ON+ch.patient_id+%3D+p.patient_id LEFT+JOIN+medical_visit+mv+ON+mv.clinical_history_id+%3D+ch.clinical_history_id GROUP+BY+p.patient_id%2C+pe.first_name%2C+pe.last_name+ ORDER+BY+`total_consultas`+ASC+&sql_signature=60b9d00df3e7e99d65f1aecd561243549f94a2ea5269cde76be7c542fbe9d3ff&session_max_rows=25&is_browse_distinct=0) |
+   | ------------------------------------------------------------ | --------------- | ------------------------------------------------------------ |
+   | 1                                                            | Carlos Gmez     | 6                                                            |
+   | 2                                                            | Mara Rodrguez   | 2                                                            |
+   | 3                                                            | Juan Martnez    | 2                                                            |
+   | 4                                                            | Laura Hernndez  | 1                                                            |
+   | 5                                                            | Andrs Moreno    | 1                                                            |
+   | 6                                                            | Paula Rojas     | 1                                                            |
+   | 7                                                            | Diego Surez     | 1                                                            |
+   | 8                                                            | Valentina Mora  | 1                                                            |
+   | 9                                                            | Gabriel Mendoza | 0                                                            |
+   | 10                                                           | Andrés Gómez    | 0                                                            |
+
 3. ¿Cuál fue la última consulta de un paciente?
+
+   | 1    | Carlos Gmez    | 2026-10-08 17:33:24 |
+   | ---- | -------------- | ------------------- |
+   | 2    | Mara Rodrguez  | 2026-06-20 11:00:00 |
+   | 3    | Juan Martnez   | 2026-06-15 10:30:00 |
+   | 4    | Laura Hernndez | 2026-06-10 08:05:00 |
+   | 5    | Andrs Moreno   | 2026-05-20 10:00:00 |
+   | 6    | Paula Rojas    | 2026-06-01 09:00:00 |
+   | 7    | Diego Surez    | 2026-06-03 11:00:00 |
+   | 8    | Valentina Mora | 2026-06-05 14:00:00 |
+
 4. ¿Qué pacientes tienen diagnóstico de glaucoma?
+
+   | [patient_id](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=patient&sql_query=SELECT+DISTINCT+p.patient_id%2C+CONCAT(pe.first_name%2C+'+'%2C+pe.last_name)+AS+paciente%2C+gt.name+AS+tipo_glaucoma FROM+glaucoma_record+gr JOIN+patient+p+ON+p.patient_id+%3D+gr.patient_id JOIN+person+pe+ON+pe.person_id+%3D+p.person_id JOIN+glaucoma_type+gt+ON+gt.glaucoma_type_id+%3D+gr.glaucoma_type_id WHERE+gr.active+%3D+TRUE+ ORDER+BY+`p`.`patient_id`+ASC+&sql_signature=a926ade85adc05a8411503f51d60e9cc41c69e79cf1854993e7fbc55519d5b3f&session_max_rows=25&is_browse_distinct=0) | [paciente](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=patient&sql_query=SELECT+DISTINCT+p.patient_id%2C+CONCAT(pe.first_name%2C+'+'%2C+pe.last_name)+AS+paciente%2C+gt.name+AS+tipo_glaucoma FROM+glaucoma_record+gr JOIN+patient+p+ON+p.patient_id+%3D+gr.patient_id JOIN+person+pe+ON+pe.person_id+%3D+p.person_id JOIN+glaucoma_type+gt+ON+gt.glaucoma_type_id+%3D+gr.glaucoma_type_id WHERE+gr.active+%3D+TRUE+ ORDER+BY+`paciente`+ASC+&sql_signature=733c8988064b24d461476b514f09407339753569c13ef1c86900e8388212cb3e&session_max_rows=25&is_browse_distinct=0) | [tipo_glaucoma](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=patient&sql_query=SELECT+DISTINCT+p.patient_id%2C+CONCAT(pe.first_name%2C+'+'%2C+pe.last_name)+AS+paciente%2C+gt.name+AS+tipo_glaucoma FROM+glaucoma_record+gr JOIN+patient+p+ON+p.patient_id+%3D+gr.patient_id JOIN+person+pe+ON+pe.person_id+%3D+p.person_id JOIN+glaucoma_type+gt+ON+gt.glaucoma_type_id+%3D+gr.glaucoma_type_id WHERE+gr.active+%3D+TRUE+ ORDER+BY+`tipo_glaucoma`+ASC+&sql_signature=a2a40708d5fe04b3d95b18fdbcf453e558d9c29ab20c5a62f37024b4fedc4588&session_max_rows=25&is_browse_distinct=0) |      |
+   | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ---- |
+   | 2                                                            | Mara Rodrguez                                                | Glaucoma primario de ngulo abierto                           |      |
+   | 6                                                            | Paula Rojas                                                  | Glaucoma primario de ngulo abierto                           |      |
+
 5. ¿Cuántos pacientes existen por tipo de glaucoma?
+
+   | tipo_glaucoma                      | cantidad_pacientes |      |
+   | ---------------------------------- | ------------------ | ---- |
+   | Glaucoma primario de ngulo abierto | 2                  |      |
+
 6. ¿Cuál es la presión intraocular promedio por ojo?
+
+   | [ojo](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=e&sql_query=SELECT+e.code+AS+ojo%2C+e.name+AS+descripcion_ojo%2C+AVG(iop.pressure_value)+AS+pio_promedio FROM+intraocular_pressure+iop JOIN+eye+e+ON+e.eye_id+%3D+iop.eye_id GROUP+BY+e.eye_id%2C+e.code%2C+e.name+ ORDER+BY+`ojo`+ASC+&sql_signature=12063cda269d71a9c5774e19f73d55f30cc232da75e34fc20e138f4633817368&session_max_rows=25&is_browse_distinct=0) | [descripcion_ojo](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=e&sql_query=SELECT+e.code+AS+ojo%2C+e.name+AS+descripcion_ojo%2C+AVG(iop.pressure_value)+AS+pio_promedio FROM+intraocular_pressure+iop JOIN+eye+e+ON+e.eye_id+%3D+iop.eye_id GROUP+BY+e.eye_id%2C+e.code%2C+e.name+ ORDER+BY+`descripcion_ojo`+ASC+&sql_signature=d616df49b808ac73c761b1767b51b418aebfbab6ae9b2caddec5c64bbae9693b&session_max_rows=25&is_browse_distinct=0) | [pio_promedio](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=e&sql_query=SELECT+e.code+AS+ojo%2C+e.name+AS+descripcion_ojo%2C+AVG(iop.pressure_value)+AS+pio_promedio FROM+intraocular_pressure+iop JOIN+eye+e+ON+e.eye_id+%3D+iop.eye_id GROUP+BY+e.eye_id%2C+e.code%2C+e.name+ ORDER+BY+`pio_promedio`+ASC+&sql_signature=d15296cb7b89cc81dbefb273d24fda364d58d810f53d36d96401b6c139cd0bb0&session_max_rows=25&is_browse_distinct=0) |      |
+   | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ---- |
+   | OD                                                           | Ojo derecho                                                  | 18.000000                                                    |      |
+   | OS                                                           | Ojo izquierdo                                                | 16.666667                                                    |      |
+
 7. ¿Cuál es la presión máxima registrada por paciente?
+
+   | [patient_id](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=p&sql_query=SELECT+p.patient_id%2C+CONCAT(pe.first_name%2C+'+'%2C+pe.last_name)+AS+paciente%2C+MAX(iop.pressure_value)+AS+pio_maxima FROM+intraocular_pressure+iop JOIN+medical_visit+mv+ON+mv.visit_id+%3D+iop.visit_id JOIN+clinical_history+ch+ON+ch.clinical_history_id+%3D+mv.clinical_history_id JOIN+patient+p+ON+p.patient_id+%3D+ch.patient_id JOIN+person+pe+ON+pe.person_id+%3D+p.person_id GROUP+BY+p.patient_id%2C+pe.first_name%2C+pe.last_name+ ORDER+BY+`p`.`patient_id`+ASC+&sql_signature=d5d183c088ede8d5ebe4d96fd65653a671b17f195cafb261e6201f7aab6dad4c&session_max_rows=25&is_browse_distinct=0) | [paciente](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=p&sql_query=SELECT+p.patient_id%2C+CONCAT(pe.first_name%2C+'+'%2C+pe.last_name)+AS+paciente%2C+MAX(iop.pressure_value)+AS+pio_maxima FROM+intraocular_pressure+iop JOIN+medical_visit+mv+ON+mv.visit_id+%3D+iop.visit_id JOIN+clinical_history+ch+ON+ch.clinical_history_id+%3D+mv.clinical_history_id JOIN+patient+p+ON+p.patient_id+%3D+ch.patient_id JOIN+person+pe+ON+pe.person_id+%3D+p.person_id GROUP+BY+p.patient_id%2C+pe.first_name%2C+pe.last_name+ ORDER+BY+`paciente`+ASC+&sql_signature=9011f8e49b5341ab1ab1faeeb90a13ec247c5245d8e1d9032ad687c88a74b8fb&session_max_rows=25&is_browse_distinct=0) | [pio_maxima](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=p&sql_query=SELECT+p.patient_id%2C+CONCAT(pe.first_name%2C+'+'%2C+pe.last_name)+AS+paciente%2C+MAX(iop.pressure_value)+AS+pio_maxima FROM+intraocular_pressure+iop JOIN+medical_visit+mv+ON+mv.visit_id+%3D+iop.visit_id JOIN+clinical_history+ch+ON+ch.clinical_history_id+%3D+mv.clinical_history_id JOIN+patient+p+ON+p.patient_id+%3D+ch.patient_id JOIN+person+pe+ON+pe.person_id+%3D+p.person_id GROUP+BY+p.patient_id%2C+pe.first_name%2C+pe.last_name+ ORDER+BY+`pio_maxima`+ASC+&sql_signature=d1ea04c264b7f042b938727f67d427929d92dd747c1847b18d7fe4c39e4f4e9d&session_max_rows=25&is_browse_distinct=0) |      |
+   | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ---- |
+   | 1                                                            | Carlos Gmez                                                  | 22.00                                                        |      |
+   | 2                                                            | Mara Rodrguez                                                | 28.00                                                        |      |
+   | 6                                                            | Paula Rojas                                                  | 14.00                                                        |      |
+
 8. ¿Qué pacientes tienen más de tres controles de glaucoma?
+
+   Ninguno tiene mas de tres controles de glaucoma
+
 9. ¿Qué profesionales han atendido más pacientes?
+
+   | [professional_id](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=healthcare_professional&sql_query=SELECT+hp.professional_id%2C+CONCAT(pe.first_name%2C+'+'%2C+pe.last_name)+AS+profesional%2C+COUNT(DISTINCT+ch.patient_id)+AS+pacientes_atendidos FROM+healthcare_professional+hp JOIN+person+pe+ON+pe.person_id+%3D+hp.person_id JOIN+medical_visit+mv+ON+mv.professional_id+%3D+hp.professional_id JOIN+clinical_history+ch+ON+ch.clinical_history_id+%3D+mv.clinical_history_id GROUP+BY+hp.professional_id%2C+pe.first_name%2C+pe.last_name+ ORDER+BY+`hp`.`professional_id`+ASC+&sql_signature=53c75ef2a4846617cfba754455bd88791027c040946dae3f380129e0e4482d89&session_max_rows=25&is_browse_distinct=0) | [profesional](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=healthcare_professional&sql_query=SELECT+hp.professional_id%2C+CONCAT(pe.first_name%2C+'+'%2C+pe.last_name)+AS+profesional%2C+COUNT(DISTINCT+ch.patient_id)+AS+pacientes_atendidos FROM+healthcare_professional+hp JOIN+person+pe+ON+pe.person_id+%3D+hp.person_id JOIN+medical_visit+mv+ON+mv.professional_id+%3D+hp.professional_id JOIN+clinical_history+ch+ON+ch.clinical_history_id+%3D+mv.clinical_history_id GROUP+BY+hp.professional_id%2C+pe.first_name%2C+pe.last_name+ ORDER+BY+`profesional`+ASC+&sql_signature=cf0f43e384787d5ec6e1b4594b128309f68c61a21f26907873850bf923f6e74e&session_max_rows=25&is_browse_distinct=0) | [pacientes_atendidos ![Descendente](http://localhost:8081/themes/dot.gif) 1](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=healthcare_professional&sql_query=SELECT+hp.professional_id%2C+CONCAT(pe.first_name%2C+'+'%2C+pe.last_name)+AS+profesional%2C+COUNT(DISTINCT+ch.patient_id)+AS+pacientes_atendidos FROM+healthcare_professional+hp JOIN+person+pe+ON+pe.person_id+%3D+hp.person_id JOIN+medical_visit+mv+ON+mv.professional_id+%3D+hp.professional_id JOIN+clinical_history+ch+ON+ch.clinical_history_id+%3D+mv.clinical_history_id GROUP+BY+hp.professional_id%2C+pe.first_name%2C+pe.last_name+ ORDER+BY+`pacientes_atendidos`+ASC+&sql_signature=ee33163444903a4f29815afda73f218b9b09f09c8a61e4f8b2d1e607ac955937&session_max_rows=25&is_browse_distinct=0) |      |
+   | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ---- |
+   | 1                                                            | Ricardo Beltrn                                               | 3                                                            |      |
+   | 2                                                            | Claudia Duarte                                               | 2                                                            |      |
+   | 3                                                            | Felipe Quintero                                              | 2                                                            |      |
+   | 4                                                            | Natalia Pardo                                                | 2                                                            |      |
+
 10. ¿Qué medicamentos son utilizados con mayor frecuencia?
+
+    | [medicamento](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=m&sql_query=SELECT+m.name+AS+medicamento%2C+COUNT(tm.treatment_id)+AS+frecuencia_uso FROM+treatment_medication+tm JOIN+medication+m+ON+m.medication_id+%3D+tm.medication_id GROUP+BY+m.medication_id%2C+m.name+ ORDER+BY+`medicamento`+ASC+&sql_signature=bd67412f5e611120d8b859839a2b5e14475ab8de94bf05e7ad6443bf1ec2a5e3&session_max_rows=25&is_browse_distinct=0) | [frecuencia_uso ![Descendente](http://localhost:8081/themes/dot.gif) 1](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=m&sql_query=SELECT+m.name+AS+medicamento%2C+COUNT(tm.treatment_id)+AS+frecuencia_uso FROM+treatment_medication+tm JOIN+medication+m+ON+m.medication_id+%3D+tm.medication_id GROUP+BY+m.medication_id%2C+m.name+ ORDER+BY+`frecuencia_uso`+ASC+&sql_signature=3ddde0b15d6415e7f006e1ed9fec051b8bfcc1a67b478d9d8c3746cae2212251&session_max_rows=25&is_browse_distinct=0) |      |
+    | ------------------------------------------------------------ | ------------------------------------------------------------ | ---- |
+    | Latanoprost                                                  | 2                                                            |      |
+    | Timolol                                                      | 1                                                            |      |
+    | Lgrimas artificiales                                         | 1                                                            |      |
+    | Dorzolamida                                                  | 1                                                            |      |
+    | Hialuronato de sodio                                         | 1                                                            |      |
+
 11. ¿Cuántos estudios OCT se realizaron por mes?
+
+    | [mes ![Ascendente](http://localhost:8081/themes/dot.gif) 1](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=clinical_exam&sql_query=SELECT+DATE_FORMAT(ce.exam_date%2C+'%Y-%m')+AS+mes%2C+COUNT(ce.clinical_exam_id)+AS+total_oct FROM+clinical_exam+ce JOIN+exam_type+et+ON+et.exam_type_id+%3D+ce.exam_type_id WHERE+et.name+LIKE+'%OCT%' GROUP+BY+DATE_FORMAT(ce.exam_date%2C+'%Y-%m')+ ORDER+BY+`mes`+ASC+&sql_signature=720c86433731b71e063fcd2d54e0ac48874cdc5bf9c47472a8c7e8da8be1d26c&session_max_rows=25&is_browse_distinct=0) | [total_oct](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=clinical_exam&sql_query=SELECT+DATE_FORMAT(ce.exam_date%2C+'%Y-%m')+AS+mes%2C+COUNT(ce.clinical_exam_id)+AS+total_oct FROM+clinical_exam+ce JOIN+exam_type+et+ON+et.exam_type_id+%3D+ce.exam_type_id WHERE+et.name+LIKE+'%OCT%' GROUP+BY+DATE_FORMAT(ce.exam_date%2C+'%Y-%m')+ ORDER+BY+`total_oct`+ASC+&sql_signature=0c704386169749145e3d8079ae623452ef88ab84fb5ef88e724a3eb0be074cf4&session_max_rows=25&is_browse_distinct=0) |      |
+    | ------------------------------------------------------------ | ------------------------------------------------------------ | ---- |
+    | 2026-06                                                      | 2                                                            |      |
+    | 2026-05                                                      | 3                                                            |      |
+
 12. ¿Qué pacientes no han tenido consulta durante determinado período?
+
+    el paciente gabriel y andrez gomez
+
 13. ¿Cuál es la evolución de la presión intraocular de un paciente?
+
+    | [patient_id ![Descendente](http://localhost:8081/themes/dot.gif) 1](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=patient&sql_query=SELECT+p.patient_id%2C+CONCAT(pe.first_name%2C+'+'%2C+pe.last_name)+AS+paciente%2C+mv.visit_date%2C+e.code+AS+ojo%2C+iop.pressure_value%2C+iop.unit FROM+intraocular_pressure+iop JOIN+medical_visit+mv+ON+mv.visit_id+%3D+iop.visit_id JOIN+clinical_history+ch+ON+ch.clinical_history_id+%3D+mv.clinical_history_id JOIN+patient+p+ON+p.patient_id+%3D+ch.patient_id JOIN+person+pe+ON+pe.person_id+%3D+p.person_id JOIN+eye+e+ON+e.eye_id+%3D+iop.eye_id+ ORDER+BY+`p`.`patient_id`+DESC+&sql_signature=5fddd32070cdc70cb27d4c8f63560f0cf976c734f8949db8306272bf81acbd8e&session_max_rows=25&is_browse_distinct=0) | [paciente](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=patient&sql_query=SELECT+p.patient_id%2C+CONCAT(pe.first_name%2C+'+'%2C+pe.last_name)+AS+paciente%2C+mv.visit_date%2C+e.code+AS+ojo%2C+iop.pressure_value%2C+iop.unit FROM+intraocular_pressure+iop JOIN+medical_visit+mv+ON+mv.visit_id+%3D+iop.visit_id JOIN+clinical_history+ch+ON+ch.clinical_history_id+%3D+mv.clinical_history_id JOIN+patient+p+ON+p.patient_id+%3D+ch.patient_id JOIN+person+pe+ON+pe.person_id+%3D+p.person_id JOIN+eye+e+ON+e.eye_id+%3D+iop.eye_id+ ORDER+BY+`paciente`+ASC+&sql_signature=cab075dab032ab5f3ee7a5237dd9b1316605dc1bf874af46424618c8969d5e06&session_max_rows=25&is_browse_distinct=0) | [visit_date](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=patient&sql_query=SELECT+p.patient_id%2C+CONCAT(pe.first_name%2C+'+'%2C+pe.last_name)+AS+paciente%2C+mv.visit_date%2C+e.code+AS+ojo%2C+iop.pressure_value%2C+iop.unit FROM+intraocular_pressure+iop JOIN+medical_visit+mv+ON+mv.visit_id+%3D+iop.visit_id JOIN+clinical_history+ch+ON+ch.clinical_history_id+%3D+mv.clinical_history_id JOIN+patient+p+ON+p.patient_id+%3D+ch.patient_id JOIN+person+pe+ON+pe.person_id+%3D+p.person_id JOIN+eye+e+ON+e.eye_id+%3D+iop.eye_id+ ORDER+BY+`mv`.`visit_date`+DESC+&sql_signature=bbc1f6af6dc7c6f6a14d6c27b30e721b48ab4db5bcf4a15731123e44b1d7d596&session_max_rows=25&is_browse_distinct=0) | [ojo](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=patient&sql_query=SELECT+p.patient_id%2C+CONCAT(pe.first_name%2C+'+'%2C+pe.last_name)+AS+paciente%2C+mv.visit_date%2C+e.code+AS+ojo%2C+iop.pressure_value%2C+iop.unit FROM+intraocular_pressure+iop JOIN+medical_visit+mv+ON+mv.visit_id+%3D+iop.visit_id JOIN+clinical_history+ch+ON+ch.clinical_history_id+%3D+mv.clinical_history_id JOIN+patient+p+ON+p.patient_id+%3D+ch.patient_id JOIN+person+pe+ON+pe.person_id+%3D+p.person_id JOIN+eye+e+ON+e.eye_id+%3D+iop.eye_id+ ORDER+BY+`ojo`+ASC+&sql_signature=ebb3eb9e9efd4412e2c7ec589bbcc49b00c4e9ebcbea2b366ec74f593c78dfc5&session_max_rows=25&is_browse_distinct=0) | [pressure_value](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=patient&sql_query=SELECT+p.patient_id%2C+CONCAT(pe.first_name%2C+'+'%2C+pe.last_name)+AS+paciente%2C+mv.visit_date%2C+e.code+AS+ojo%2C+iop.pressure_value%2C+iop.unit FROM+intraocular_pressure+iop JOIN+medical_visit+mv+ON+mv.visit_id+%3D+iop.visit_id JOIN+clinical_history+ch+ON+ch.clinical_history_id+%3D+mv.clinical_history_id JOIN+patient+p+ON+p.patient_id+%3D+ch.patient_id JOIN+person+pe+ON+pe.person_id+%3D+p.person_id JOIN+eye+e+ON+e.eye_id+%3D+iop.eye_id+ ORDER+BY+`iop`.`pressure_value`+ASC+&sql_signature=1e06690eda17510b6505a2a24fd3a639687e301ec1613184960ac3e8e0fcc2fd&session_max_rows=25&is_browse_distinct=0) | [unit](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=patient&sql_query=SELECT+p.patient_id%2C+CONCAT(pe.first_name%2C+'+'%2C+pe.last_name)+AS+paciente%2C+mv.visit_date%2C+e.code+AS+ojo%2C+iop.pressure_value%2C+iop.unit FROM+intraocular_pressure+iop JOIN+medical_visit+mv+ON+mv.visit_id+%3D+iop.visit_id JOIN+clinical_history+ch+ON+ch.clinical_history_id+%3D+mv.clinical_history_id JOIN+patient+p+ON+p.patient_id+%3D+ch.patient_id JOIN+person+pe+ON+pe.person_id+%3D+p.person_id JOIN+eye+e+ON+e.eye_id+%3D+iop.eye_id+ ORDER+BY+`iop`.`unit`+ASC+&sql_signature=c14c5e6efe2ff4631145a163d6f061a9eba2c5e30cb1d3731fab3cebdfc986be&session_max_rows=25&is_browse_distinct=0) |      |
+    | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ---- |
+    | 1                                                            | Carlos Gmez                                                  | 2026-05-04 08:05:00                                          | OD                                                           | 16.00                                                        | mmHg                                                         |      |
+    | 1                                                            | Carlos Gmez                                                  | 2026-05-04 08:05:00                                          | OS                                                           | 17.00                                                        | mmHg                                                         |      |
+    | 1                                                            | Carlos Gmez                                                  | 2026-05-04 08:05:00                                          | OD                                                           | 15.00                                                        | mmHg                                                         |      |
+    | 1                                                            | Carlos Gmez                                                  | 2026-05-04 08:05:00                                          | OD                                                           | 22.00                                                        | mmHg                                                         |      |
+    | 1                                                            | Carlos Gmez                                                  | 2026-05-04 08:05:00                                          | OS                                                           | 18.00                                                        | mmHg                                                         |      |
+    | 1                                                            | Carlos Gmez                                                  | 2026-06-01 09:00:00                                          | OD                                                           | 22.00                                                        | mmHg                                                         |      |
+    | 1                                                            | Carlos Gmez                                                  | 2026-06-01 09:00:00                                          | OS                                                           | 20.00                                                        | mmHg                                                         |      |
+    | 1                                                            | Carlos Gmez                                                  | 2026-06-01 09:00:00                                          | OD                                                           | 14.00                                                        | mmHg                                                         |      |
+    | 1                                                            | Carlos Gmez                                                  | 2026-06-01 09:00:00                                          | OS                                                           | 16.00                                                        | mmHg                                                         |      |
+    | 2                                                            | Mara Rodrguez                                                | 2026-05-05 08:05:00                                          | OD                                                           | 14.00                                                        | mmHg                                                         |      |
+    | 2                                                            | Mara Rodrguez                                                | 2026-05-05 08:05:00                                          | OS                                                           | 15.00                                                        | mmHg                                                         |      |
+    | 2                                                            | Mara Rodrguez                                                | 2026-05-05 08:05:00                                          | OD                                                           | 18.00                                                        | mmHg                                                         |      |
+    | 2                                                            | Mara Rodrguez                                                | 2026-05-05 08:05:00                                          | OD                                                           | 28.00                                                        | mmHg                                                         |      |
+    | 6                                                            | Paula Rojas                                                  | 2026-06-01 09:00:00                                          | OD                                                           | 13.00                                                        | mmHg                                                         |      |
+    | 6                                                            | Paula Rojas                                                  | 2026-06-01 09:00:00                                          | OS                                                           | 14.00                                                        | mmHg                                                         |      |
+
 14. ¿Qué pacientes presentan valores de PIO superiores a determinado umbral?
+
+    | [patient_id](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=patient&sql_query=SELECT+DISTINCT+p.patient_id%2C+CONCAT(pe.first_name%2C+'+'%2C+pe.last_name)+AS+paciente%2C+iop.pressure_value%2C+e.code+AS+ojo%2C+iop.measured_at FROM+intraocular_pressure+iop JOIN+medical_visit+mv+ON+mv.visit_id+%3D+iop.visit_id JOIN+clinical_history+ch+ON+ch.clinical_history_id+%3D+mv.clinical_history_id JOIN+patient+p+ON+p.patient_id+%3D+ch.patient_id JOIN+person+pe+ON+pe.person_id+%3D+p.person_id JOIN+eye+e+ON+e.eye_id+%3D+iop.eye_id WHERE+iop.pressure_value+>+21+ ORDER+BY+`p`.`patient_id`+ASC+&sql_signature=f52c93ce5a04ed9996f798952ffa3a87b2ec5fbb8d678efdf93d7c7a6f318e8e&session_max_rows=25&is_browse_distinct=0) | [paciente](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=patient&sql_query=SELECT+DISTINCT+p.patient_id%2C+CONCAT(pe.first_name%2C+'+'%2C+pe.last_name)+AS+paciente%2C+iop.pressure_value%2C+e.code+AS+ojo%2C+iop.measured_at FROM+intraocular_pressure+iop JOIN+medical_visit+mv+ON+mv.visit_id+%3D+iop.visit_id JOIN+clinical_history+ch+ON+ch.clinical_history_id+%3D+mv.clinical_history_id JOIN+patient+p+ON+p.patient_id+%3D+ch.patient_id JOIN+person+pe+ON+pe.person_id+%3D+p.person_id JOIN+eye+e+ON+e.eye_id+%3D+iop.eye_id WHERE+iop.pressure_value+>+21+ ORDER+BY+`paciente`+ASC+&sql_signature=55a63f99518d32fd5cc97d793963d68d7c1f54f6195e301cb55f8a53c4d99792&session_max_rows=25&is_browse_distinct=0) | [pressure_value](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=patient&sql_query=SELECT+DISTINCT+p.patient_id%2C+CONCAT(pe.first_name%2C+'+'%2C+pe.last_name)+AS+paciente%2C+iop.pressure_value%2C+e.code+AS+ojo%2C+iop.measured_at FROM+intraocular_pressure+iop JOIN+medical_visit+mv+ON+mv.visit_id+%3D+iop.visit_id JOIN+clinical_history+ch+ON+ch.clinical_history_id+%3D+mv.clinical_history_id JOIN+patient+p+ON+p.patient_id+%3D+ch.patient_id JOIN+person+pe+ON+pe.person_id+%3D+p.person_id JOIN+eye+e+ON+e.eye_id+%3D+iop.eye_id WHERE+iop.pressure_value+>+21+ ORDER+BY+`iop`.`pressure_value`+ASC+&sql_signature=6074b1c12fd11335adc707a6201e8de0bb7ffb86111dd82d98693c72693a96d5&session_max_rows=25&is_browse_distinct=0) | [ojo](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=patient&sql_query=SELECT+DISTINCT+p.patient_id%2C+CONCAT(pe.first_name%2C+'+'%2C+pe.last_name)+AS+paciente%2C+iop.pressure_value%2C+e.code+AS+ojo%2C+iop.measured_at FROM+intraocular_pressure+iop JOIN+medical_visit+mv+ON+mv.visit_id+%3D+iop.visit_id JOIN+clinical_history+ch+ON+ch.clinical_history_id+%3D+mv.clinical_history_id JOIN+patient+p+ON+p.patient_id+%3D+ch.patient_id JOIN+person+pe+ON+pe.person_id+%3D+p.person_id JOIN+eye+e+ON+e.eye_id+%3D+iop.eye_id WHERE+iop.pressure_value+>+21+ ORDER+BY+`ojo`+ASC+&sql_signature=279a260d88f8ba0088d92986656df29b867dad843333ae0097c86e2861ba3859&session_max_rows=25&is_browse_distinct=0) | [measured_at](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=patient&sql_query=SELECT+DISTINCT+p.patient_id%2C+CONCAT(pe.first_name%2C+'+'%2C+pe.last_name)+AS+paciente%2C+iop.pressure_value%2C+e.code+AS+ojo%2C+iop.measured_at FROM+intraocular_pressure+iop JOIN+medical_visit+mv+ON+mv.visit_id+%3D+iop.visit_id JOIN+clinical_history+ch+ON+ch.clinical_history_id+%3D+mv.clinical_history_id JOIN+patient+p+ON+p.patient_id+%3D+ch.patient_id JOIN+person+pe+ON+pe.person_id+%3D+p.person_id JOIN+eye+e+ON+e.eye_id+%3D+iop.eye_id WHERE+iop.pressure_value+>+21+ ORDER+BY+`iop`.`measured_at`+DESC+&sql_signature=a421453839b78dea6b14fcc449d92882f5a948e429a30171eb0f3b348b09ff0d&session_max_rows=25&is_browse_distinct=0) |      |
+    | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ---- |
+    | 1                                                            | Carlos Gmez                                                  | 22.00                                                        | OD                                                           | 2026-06-01 09:15:00                                          |      |
+    | 1                                                            | Carlos Gmez                                                  | 22.00                                                        | OD                                                           | 2026-01-10 08:00:00                                          |      |
+    | 2                                                            | Mara Rodrguez                                                | 28.00                                                        | OD                                                           | 2026-02-15 09:00:00                                          |      |
+
 15. ¿Cuántos procedimientos se realizaron por tipo?
+
+    | [tipo_procedimiento](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=mp&sql_query=SELECT+mp.name+AS+tipo_procedimiento%2C+COUNT(vp.visit_procedure_id)+AS+total_realizados FROM+visit_procedure+vp JOIN+medical_procedure+mp+ON+mp.procedure_id+%3D+vp.procedure_id GROUP+BY+mp.procedure_id%2C+mp.name+ ORDER+BY+`tipo_procedimiento`+ASC+&sql_signature=c9798487fa69b1924d64418aa043c07f86f2875110c1be8248b7bfce049846d3&session_max_rows=25&is_browse_distinct=0) | [total_realizados ![Descendente](http://localhost:8081/themes/dot.gif) 1](http://localhost:8081/index.php?route=/sql&db=historia_clinica_oftalmologica&table=mp&sql_query=SELECT+mp.name+AS+tipo_procedimiento%2C+COUNT(vp.visit_procedure_id)+AS+total_realizados FROM+visit_procedure+vp JOIN+medical_procedure+mp+ON+mp.procedure_id+%3D+vp.procedure_id GROUP+BY+mp.procedure_id%2C+mp.name+ ORDER+BY+`total_realizados`+ASC+&sql_signature=3e04ddf38d030166a8c0a5182afc1109fe5da6d6a1007f8e1f30d75a67e869c3&session_max_rows=25&is_browse_distinct=0) |      |
+    | ------------------------------------------------------------ | ------------------------------------------------------------ | ---- |
+    | Tonometra                                                    | 4                                                            |      |
+    | Oftalmoscopia                                                | 2                                                            |      |
+    | Campimetra                                                   | 1                                                            |      |
+    | Biometra ocular                                              | 1                                                            |      |
+
+## Identificación de Entidades y Atributos
+
+A partir del modelo de la historia clínica oftalmológica, el sistema se divide en **10 módulos conceptuales**:
+
+1. **Ubicación y Geografía:** `city`, `clinic`, `location`, `room`
+2. **Personas y Usuarios:** `identification_type`, `person`, `user_account`, `role`, `permission`, `user_role`, `role_permission`, `audit_log`
+3. **Personal Médico y Agenda:** `specialty`, `healthcare_professional`, `professional_specialty`, `professional_schedule`, `schedule_exception`
+4. **Pacientes y Antecedentes:** `patient`, `background_type`, `patient_background`, `allergy`, `patient_allergy`, `clinical_history`
+5. **Agendamiento:** `appointment_status`, `appointment_reason`, `appointment_type`, `appointment`, `appointment_status_history`
+6. **Consultas Médicas:** `visit_type`, `medical_visit`, `diagnosis`, `visit_diagnosis`, `medical_procedure`, `visit_procedure`, `eye`
+7. **Documentos Clínicos:** `document_type`, `clinical_document`
+8. **Tratamientos y Medicamentos:** `treatment_status`, `treatment`, `medication`, `treatment_medication`
+9. **Exámenes y Mediciones:** `unit_of_measure`, `exam_type`, `exam_parameter`, `exam_parameter_option`, `clinical_exam`, `exam_result`
+10. **Módulo Específico Oftalmológico (Glaucoma y PIO):** `intraocular_pressure`, `glaucoma_type`, `glaucoma_record`, `glaucoma_control`, `alert`
+
+## Diccionario de Datos
+
+#### 1. Ubicación y Geografía
+
+##### Tabla: `city`
+
+*Descripción: Ciudades para la ubicación de personas y clínicas.*
+
+| **Campo**    | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                      |
+| ------------ | ---------------- | --------- | ------------- | -------------------------------------------------- |
+| `city_id`    | BIGINT           | PK        | Sí            | Identificador único de la ciudad (Auto-increment). |
+| `name`       | VARCHAR(100)     | -         | Sí            | Nombre de la ciudad.                               |
+| `department` | VARCHAR(100)     | -         | Sí            | Departamento / Estado.                             |
+| `country`    | VARCHAR(100)     | -         | Sí            | País de la ciudad.                                 |
+
+##### Tabla: `clinic`
+
+*Descripción: Información general de la institución de salud.*
+
+| **Campo**   | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**           |
+| ----------- | ---------------- | --------- | ------------- | --------------------------------------- |
+| `clinic_id` | BIGINT           | PK        | Sí            | Identificador único de la clínica.      |
+| `name`      | VARCHAR(150)     | -         | Sí            | Nombre de la institución médica.        |
+| `address`   | VARCHAR(250)     | -         | Sí            | Dirección principal.                    |
+| `phone`     | VARCHAR(30)      | -         | Sí            | Teléfono de contacto.                   |
+| `email`     | VARCHAR(150)     | -         | Sí            | Correo institucional.                   |
+| `active`    | BOOLEAN          | -         | Sí            | Estado activo/inactivo (Default: TRUE). |
+
+##### Tabla: `location`
+
+*Descripción: Sede o sucursal de la clínica.*
+
+| **Campo**     | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**             |
+| ------------- | ---------------- | --------- | ------------- | ----------------------------------------- |
+| `location_id` | BIGINT           | PK        | Sí            | Identificador único de la sede.           |
+| `clinic_id`   | BIGINT           | FK        | Sí            | Referencia a `clinic(clinic_id)`.         |
+| `name`        | VARCHAR(150)     | -         | Sí            | Nombre de la sede.                        |
+| `address`     | VARCHAR(250)     | -         | Sí            | Dirección de la sede.                     |
+| `active`      | BOOLEAN          | -         | Sí            | Estado de disponibilidad (Default: TRUE). |
+
+##### Tabla: `room`
+
+*Descripción: Consultorios y salas físicas.*
+
+| **Campo**     | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                      |
+| ------------- | ---------------- | --------- | ------------- | -------------------------------------------------- |
+| `room_id`     | BIGINT           | PK        | Sí            | Identificador único del consultorio.               |
+| `location_id` | BIGINT           | FK        | Sí            | Referencia a `location(location_id)`.              |
+| `name`        | VARCHAR(100)     | -         | Sí            | Nombre o número del consultorio.                   |
+| `floor`       | VARCHAR(50)      | -         | No            | Piso o nivel dentro de la sede.                    |
+| `active`      | BOOLEAN          | -         | Sí            | Disponibilidad física del espacio (Default: TRUE). |
+
+#### 2. Personas, Usuarios y Seguridad
+
+##### Tabla: `identification_type`
+
+*Descripción: Tipos de documento de identidad (CC, CE, Pasaporte, etc.).*
+
+| **Campo**                | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                 |
+| ------------------------ | ---------------- | --------- | ------------- | --------------------------------------------- |
+| `identification_type_id` | BIGINT           | PK        | Sí            | Identificador único del tipo de documento.    |
+| `code`                   | VARCHAR(50)      | UK        | Sí            | Código corto del documento (CC, TI, PAS, CE). |
+| `name`                   | VARCHAR(100)     | -         | Sí            | Nombre completo del tipo de documento.        |
+| `description`            | VARCHAR(150)     | -         | No            | Descripción complementaria.                   |
+
+##### Tabla: `person`
+
+*Descripción: Registro base unificado para personas (Pacientes, Médicos, Usuarios).*
+
+| **Campo**                | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                               |
+| ------------------------ | ---------------- | --------- | ------------- | ----------------------------------------------------------- |
+| `person_id`              | BIGINT           | PK        | Sí            | Identificador único de la persona.                          |
+| `identification_type_id` | BIGINT           | FK        | Sí            | Referencia a `identification_type(identification_type_id)`. |
+| `identification_number`  | VARCHAR(100)     | UK        | Sí            | Número único de documento de identidad.                     |
+| `first_name`             | VARCHAR(100)     | -         | Sí            | Primer nombre.                                              |
+| `middle_name`            | VARCHAR(100)     | -         | No            | Segundo nombre.                                             |
+| `last_name`              | VARCHAR(100)     | -         | Sí            | Primer apellido.                                            |
+| `second_last_name`       | VARCHAR(100)     | -         | No            | Segundo apellido.                                           |
+| `birth_date`             | DATE             | -         | Sí            | Fecha de nacimiento.                                        |
+| `gender`                 | VARCHAR(20)      | -         | Sí            | Género registrado.                                          |
+| `phone`                  | VARCHAR(30)      | -         | No            | Teléfono de contacto.                                       |
+| `email`                  | VARCHAR(150)     | -         | No            | Correo electrónico personal.                                |
+| `address`                | VARCHAR(250)     | -         | No            | Dirección residencial.                                      |
+| `city_id`                | BIGINT           | FK        | Sí            | Referencia a `city(city_id)`.                               |
+
+##### Tabla: `user_account`
+
+*Descripción: Cuentas de acceso al sistema.*
+
+| **Campo**       | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                   |
+| --------------- | ---------------- | --------- | ------------- | ----------------------------------------------- |
+| `user_id`       | BIGINT           | PK        | Sí            | Identificador único de usuario.                 |
+| `person_id`     | BIGINT           | FK, UK    | Sí            | Referencia a `person(person_id)`. Relación 1:1. |
+| `username`      | VARCHAR(100)     | UK        | Sí            | Nombre de usuario único de sesión.              |
+| `password_hash` | VARCHAR(255)     | -         | Sí            | Contraseña encriptada (Hash).                   |
+| `active`        | BOOLEAN          | -         | Sí            | Estado de la cuenta de usuario (Default: TRUE). |
+| `created_at`    | DATETIME         | -         | Sí            | Fecha y hora de creación de la cuenta.          |
+| `last_login`    | DATETIME         | -         | No            | Registro del último inicio de sesión.           |
+
+##### Tabla: `role`
+
+*Descripción: Roles del sistema (Médico, Recepcionista, Administrador).*
+
+| **Campo**     | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**    |
+| ------------- | ---------------- | --------- | ------------- | -------------------------------- |
+| `role_id`     | BIGINT           | PK        | Sí            | Identificador único del rol.     |
+| `name`        | VARCHAR(100)     | UK        | Sí            | Nombre del rol.                  |
+| `description` | VARCHAR(250)     | -         | No            | Descripción del alcance del rol. |
+| `active`      | BOOLEAN          | -         | Sí            | Estado del rol (Default: TRUE).  |
+
+##### Tabla: `permission`
+
+*Descripción: Permisos atómicos del sistema.*
+
+| **Campo**       | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**        |
+| --------------- | ---------------- | --------- | ------------- | ------------------------------------ |
+| `permission_id` | BIGINT           | PK        | Sí            | Identificador único del permiso.     |
+| `name`          | VARCHAR(100)     | UK        | Sí            | Nombre/Código de acción del permiso. |
+| `description`   | VARCHAR(250)     | -         | No            | Descripción de la acción permitida.  |
+
+##### Tabla: `user_role`
+
+*Descripción: Tabla intermedia entre usuarios y roles (N:M).*
+
+| **Campo** | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**         |
+| --------- | ---------------- | --------- | ------------- | ------------------------------------- |
+| `user_id` | BIGINT           | PK, FK    | Sí            | Referencia a `user_account(user_id)`. |
+| `role_id` | BIGINT           | PK, FK    | Sí            | Referencia a `role(role_id)`.         |
+
+##### Tabla: `role_permission`
+
+*Descripción: Tabla intermedia entre roles y permisos (N:M).*
+
+| **Campo**       | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**             |
+| --------------- | ---------------- | --------- | ------------- | ----------------------------------------- |
+| `role_id`       | BIGINT           | PK, FK    | Sí            | Referencia a `role(role_id)`.             |
+| `permission_id` | BIGINT           | PK, FK    | Sí            | Referencia a `permission(permission_id)`. |
+
+##### Tabla: `audit_log`
+
+*Descripción: Historial de auditoría para cambios en el sistema.*
+
+| **Campo**      | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                               |
+| -------------- | ---------------- | --------- | ------------- | ----------------------------------------------------------- |
+| `audit_log_id` | BIGINT           | PK        | Sí            | Identificador único de la auditoría.                        |
+| `user_id`      | BIGINT           | FK        | Sí            | Referencia a `user_account(user_id)` que realizó la acción. |
+| `action`       | VARCHAR(100)     | -         | Sí            | Acción ejecutada (INSERT, UPDATE, DELETE).                  |
+| `table_name`   | VARCHAR(100)     | -         | Sí            | Tabla afectada.                                             |
+| `record_id`    | BIGINT           | -         | Sí            | ID del registro modificado.                                 |
+| `old_values`   | TEXT             | -         | No            | JSON o datos previos al cambio.                             |
+| `new_values`   | TEXT             | -         | No            | JSON o datos posteriores al cambio.                         |
+| `created_at`   | DATETIME         | -         | Sí            | Marca de tiempo del evento.                                 |
+
+#### 3. Personal Médico y Agenda
+
+##### Tabla: `specialty`
+
+*Descripción: Especialidades y subespecialidades médicas.*
+
+| **Campo**      | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**            |
+| -------------- | ---------------- | --------- | ------------- | ---------------------------------------- |
+| `specialty_id` | BIGINT           | PK        | Sí            | Identificador único de la especialidad.  |
+| `name`         | VARCHAR(100)     | UK        | Sí            | Nombre (ej. Oftalmología, Glaucoma).     |
+| `description`  | VARCHAR(250)     | -         | No            | Descripción temática de la especialidad. |
+| `active`       | BOOLEAN          | -         | Sí            | Estado (Default: TRUE).                  |
+
+##### Tabla: `healthcare_professional`
+
+*Descripción: Información del profesional de la salud.*
+
+| **Campo**              | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**             |
+| ---------------------- | ---------------- | --------- | ------------- | ----------------------------------------- |
+| `professional_id`      | BIGINT           | PK        | Sí            | Identificador único del profesional.      |
+| `person_id`            | BIGINT           | FK, UK    | Sí            | Referencia a `person(person_id)`.         |
+| `professional_license` | VARCHAR(50)      | UK        | Sí            | Número de tarjeta o licencia profesional. |
+| `active`               | BOOLEAN          | -         | Sí            | Estado operativo (Default: TRUE).         |
+
+##### Tabla: `professional_specialty`
+
+*Descripción: Relación entre médico y sus especialidades (N:M).*
+
+| **Campo**         | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                            |
+| ----------------- | ---------------- | --------- | ------------- | -------------------------------------------------------- |
+| `professional_id` | BIGINT           | PK, FK    | Sí            | Referencia a `healthcare_professional(professional_id)`. |
+| `specialty_id`    | BIGINT           | PK, FK    | Sí            | Referencia a `specialty(specialty_id)`.                  |
+
+##### Tabla: `professional_schedule`
+
+*Descripción: Agenda recurrente de atención del profesional.*
+
+| **Campo**         | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                            |
+| ----------------- | ---------------- | --------- | ------------- | -------------------------------------------------------- |
+| `schedule_id`     | BIGINT           | PK        | Sí            | Identificador de la franja horaria.                      |
+| `professional_id` | BIGINT           | FK        | Sí            | Referencia a `healthcare_professional(professional_id)`. |
+| `room_id`         | BIGINT           | FK        | Sí            | Referencia a `room(room_id)`.                            |
+| `day_of_week`     | SMALLINT         | -         | Sí            | Día de la semana (1 a 7).                                |
+| `start_time`      | TIME             | -         | Sí            | Hora de inicio de atención.                              |
+| `end_time`        | TIME             | -         | Sí            | Hora de finalización.                                    |
+| `active`          | BOOLEAN          | -         | Sí            | Estado del horario.                                      |
+
+##### Tabla: `schedule_exception`
+
+*Descripción: Bloqueos de agenda, vacaciones o ausencias de médicos.*
+
+| **Campo**        | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                      |
+| ---------------- | ---------------- | --------- | ------------- | -------------------------------------------------- |
+| `exception_id`   | BIGINT           | PK        | Sí            | Identificador de la excepción de agenda.           |
+| `schedule_id`    | BIGINT           | FK        | Sí            | Referencia a `professional_schedule(schedule_id)`. |
+| `exception_date` | DATE             | -         | Sí            | Fecha puntual de la novedad.                       |
+| `reason`         | VARCHAR(250)     | -         | No            | Motivo de la no disponibilidad.                    |
+| `available`      | BOOLEAN          | -         | Sí            | Indica si se habilita o inhabilita el día.         |
+
+#### 4. Pacientes y Historia Clínica Base
+
+##### Tabla: `patient`
+
+*Descripción: Registro de paciente en el sistema.*
+
+| **Campo**        | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**     |
+| ---------------- | ---------------- | --------- | ------------- | --------------------------------- |
+| `patient_id`     | BIGINT           | PK        | Sí            | Identificador único de paciente.  |
+| `person_id`      | BIGINT           | FK, UK    | Sí            | Referencia a `person(person_id)`. |
+| `admission_date` | DATE             | -         | Sí            | Fecha de alta/ingreso al sistema. |
+| `active`         | BOOLEAN          | -         | Sí            | Estado del paciente.              |
+
+##### Tabla: `background_type`
+
+*Descripción: Tipos de antecedentes (Patológicos, Quirúrgicos, Familiares).*
+
+| **Campo**            | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**          |
+| -------------------- | ---------------- | --------- | ------------- | -------------------------------------- |
+| `background_type_id` | BIGINT           | PK        | Sí            | Identificador del tipo de antecedente. |
+| `name`               | VARCHAR(100)     | UK        | Sí            | Nombre de la categoría.                |
+| `description`        | VARCHAR(250)     | -         | No            | Descripción de la categoría.           |
+
+##### Tabla: `patient_background`
+
+*Descripción: Antecedentes clínicos del paciente (4NF).*
+
+| **Campo**               | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                       |
+| ----------------------- | ---------------- | --------- | ------------- | --------------------------------------------------- |
+| `patient_background_id` | BIGINT           | PK        | Sí            | Identificador del registro.                         |
+| `patient_id`            | BIGINT           | FK        | Sí            | Referencia a `patient(patient_id)`.                 |
+| `background_type_id`    | BIGINT           | FK        | Sí            | Referencia a `background_type(background_type_id)`. |
+| `description`           | TEXT             | -         | Sí            | Detalle del antecedente médico.                     |
+| `start_date`            | DATE             | -         | No            | Fecha aproximada de diagnóstico.                    |
+| `end_date`              | DATE             | -         | No            | Fecha de resolución/fin (si aplica).                |
+| `active`                | BOOLEAN          | -         | Sí            | Estado del antecedente.                             |
+
+##### Tabla: `allergy`
+
+*Descripción: Catálogo general de alergias.*
+
+| **Campo**     | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**      |
+| ------------- | ---------------- | --------- | ------------- | ---------------------------------- |
+| `allergy_id`  | BIGINT           | PK        | Sí            | Identificador único de la alergia. |
+| `name`        | VARCHAR(100)     | UK        | Sí            | Nombre de la sustancia/alérgeno.   |
+| `description` | VARCHAR(250)     | -         | No            | Descripción o categoría.           |
+
+##### Tabla: `patient_allergy`
+
+*Descripción: Alergias reportadas por paciente (4NF).*
+
+| **Campo**      | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                |
+| -------------- | ---------------- | --------- | ------------- | -------------------------------------------- |
+| `patient_id`   | BIGINT           | PK, FK    | Sí            | Referencia a `patient(patient_id)`.          |
+| `allergy_id`   | BIGINT           | PK, FK    | Sí            | Referencia a `allergy(allergy_id)`.          |
+| `reaction`     | VARCHAR(250)     | -         | No            | Síntomas o manifestaciones clínicas.         |
+| `severity`     | VARCHAR(50)      | -         | No            | Grado de severidad (Leve, Moderada, Severa). |
+| `observations` | TEXT             | -         | No            | Comentarios adicionales.                     |
+
+##### Tabla: `clinical_history`
+
+*Descripción: Expediente o Historia Clínica electrónica del paciente.*
+
+| **Campo**             | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                     |
+| --------------------- | ---------------- | --------- | ------------- | ------------------------------------------------- |
+| `clinical_history_id` | BIGINT           | PK        | Sí            | Identificador de la historia clínica.             |
+| `patient_id`          | BIGINT           | FK, UK    | Sí            | Referencia a `patient(patient_id)`.               |
+| `history_number`      | VARCHAR(50)      | UK        | Sí            | Código formateado de la historia (ej: HC-000100). |
+| `created_at`          | DATETIME         | -         | Sí            | Fecha de apertura del expediente.                 |
+| `updated_at`          | DATETIME         | -         | No            | Última actualización del expediente.              |
+
+#### 5. Agendamiento de Citas
+
+##### Tabla: `appointment_status`
+
+*Descripción: Estados de una cita (Programada, Confirmada, Cancelada, Atendida).*
+
+| **Campo**               | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción** |
+| ----------------------- | ---------------- | --------- | ------------- | ----------------------------- |
+| `appointment_status_id` | BIGINT           | PK        | Sí            | Identificador del estado.     |
+| `name`                  | VARCHAR(80)      | UK        | Sí            | Nombre del estado de la cita. |
+| `description`           | VARCHAR(250)     | -         | No            | Descripción descriptiva.      |
+
+##### Tabla: `appointment_reason`
+
+*Descripción: Motivos estandarizados de asignación de cita.*
+
+| **Campo**               | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                              |
+| ----------------------- | ---------------- | --------- | ------------- | ---------------------------------------------------------- |
+| `appointment_reason_id` | BIGINT           | PK        | Sí            | Identificador del motivo.                                  |
+| `name`                  | VARCHAR(150)     | UK        | Sí            | Título del motivo (Valoración inicial, Control PIO, etc.). |
+| `description`           | VARCHAR(250)     | -         | No            | Descripción detallada.                                     |
+
+##### Tabla: `appointment_type`
+
+*Descripción: Modalidad y duración estimada de cita.*
+
+| **Campo**             | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**               |
+| --------------------- | ---------------- | --------- | ------------- | ------------------------------------------- |
+| `appointment_type_id` | BIGINT           | PK        | Sí            | Identificador del tipo de cita.             |
+| `name`                | VARCHAR(100)     | UK        | Sí            | Nombre (Primera vez, Control, Prioritaria). |
+| `description`         | VARCHAR(250)     | -         | No            | Descripción del procedimiento de cita.      |
+| `duration_minutes`    | INT              | -         | Sí            | Duración programada en minutos.             |
+
+##### Tabla: `appointment`
+
+*Descripción: Registro de citas médicas agendadas.*
+
+| **Campo**               | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                             |
+| ----------------------- | ---------------- | --------- | ------------- | --------------------------------------------------------- |
+| `appointment_id`        | BIGINT           | PK        | Sí            | Identificador único de la cita.                           |
+| `patient_id`            | BIGINT           | FK        | Sí            | Referencia a `patient(patient_id)`.                       |
+| `professional_id`       | BIGINT           | FK        | Sí            | Referencia a `healthcare_professional(professional_id)`.  |
+| `room_id`               | BIGINT           | FK        | Sí            | Referencia a `room(room_id)`.                             |
+| `appointment_status_id` | BIGINT           | FK        | Sí            | Referencia a `appointment_status(appointment_status_id)`. |
+| `appointment_reason_id` | BIGINT           | FK        | Sí            | Referencia a `appointment_reason(appointment_reason_id)`. |
+| `appointment_type_id`   | BIGINT           | FK        | Sí            | Referencia a `appointment_type(appointment_type_id)`.     |
+| `scheduled_start`       | DATETIME         | -         | Sí            | Fecha y hora de inicio agendada.                          |
+| `scheduled_end`         | DATETIME         | -         | Sí            | Fecha y hora proyectada de cierre.                        |
+| `notes`                 | TEXT             | -         | No            | Notas adicionales sobre el agendamiento.                  |
+| `created_at`            | DATETIME         | -         | Sí            | Fecha en que fue agendada.                                |
+
+##### Tabla: `appointment_status_history`
+
+*Descripción: Trazabilidad histórica de cambios de estado de cita.*
+
+| **Campo**               | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                     |
+| ----------------------- | ---------------- | --------- | ------------- | ------------------------------------------------- |
+| `status_history_id`     | BIGINT           | PK        | Sí            | Identificador del histórico.                      |
+| `appointment_id`        | BIGINT           | FK        | Sí            | Referencia a `appointment(appointment_id)`.       |
+| `appointment_status_id` | BIGINT           | FK        | Sí            | Referencia al nuevo estado asignado.              |
+| `changed_by`            | BIGINT           | FK        | Sí            | Usuario que modificó la cita (`user_account`).    |
+| `changed_at`            | DATETIME         | -         | Sí            | Marca de tiempo de modificación.                  |
+| `comments`              | VARCHAR(250)     | -         | No            | Observaciones de la reprogramación o cancelación. |
+
+#### 6. Consultas Médicas y Procedimientos
+
+##### Tabla: `eye`
+
+*Descripción: Catálogo de lateralidad de los ojos.*
+
+| **Campo** | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                                |
+| --------- | ---------------- | --------- | ------------- | ------------------------------------------------------------ |
+| `eye_id`  | BIGINT           | PK        | Sí            | Identificador del ojo.                                       |
+| `code`    | VARCHAR(20)      | UK        | Sí            | Código estándar (`OD`: Ojo Derecho, `OI`: Ojo Izquierdo, `OU`: Ambos Ojos). |
+| `name`    | VARCHAR(100)     | -         | Sí            | Nombre largo del ojo evaluado.                               |
+
+##### Tabla: `visit_type`
+
+*Descripción: Tipo de atención médica.*
+
+| **Campo**       | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                    |
+| --------------- | ---------------- | --------- | ------------- | ------------------------------------------------ |
+| `visit_type_id` | BIGINT           | PK        | Sí            | Identificador de tipo de atención.               |
+| `name`          | VARCHAR(100)     | UK        | Sí            | Nombre (Consulta presencial, Urgencia, Control). |
+| `description`   | VARCHAR(250)     | -         | No            | Descripción descriptiva.                         |
+
+##### Tabla: `medical_visit`
+
+*Descripción: Registro de una consulta médica efectuada.*
+
+| **Campo**             | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                         |
+| --------------------- | ---------------- | --------- | ------------- | ----------------------------------------------------- |
+| `visit_id`            | BIGINT           | PK        | Sí            | Identificador único de la consulta.                   |
+| `clinical_history_id` | BIGINT           | FK        | Sí            | Referencia a `clinical_history(clinical_history_id)`. |
+| `appointment_id`      | BIGINT           | FK        | No            | Cita que generó la atención (si aplica).              |
+| `professional_id`     | BIGINT           | FK        | Sí            | Profesional atendiente.                               |
+| `visit_type_id`       | BIGINT           | FK        | Sí            | Referencia a `visit_type(visit_type_id)`.             |
+| `visit_date`          | DATETIME         | -         | Sí            | Fecha y hora real de atención.                        |
+| `reason`              | TEXT             | -         | Sí            | Anamnesis / Motivo expresado por el paciente.         |
+| `observations`        | TEXT             | -         | No            | Observaciones médicas del especialista.               |
+
+##### Tabla: `diagnosis`
+
+*Descripción: Catálogo CIE-10/CIE-11 de diagnósticos.*
+
+| **Campo**      | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                   |
+| -------------- | ---------------- | --------- | ------------- | ----------------------------------------------- |
+| `diagnosis_id` | BIGINT           | PK        | Sí            | Identificador del diagnóstico.                  |
+| `code`         | VARCHAR(50)      | UK        | Sí            | Código oficial de patología.                    |
+| `name`         | VARCHAR(200)     | -         | Sí            | Nombre completo del diagnóstico.                |
+| `description`  | VARCHAR(500)     | -         | No            | Criterios y anotaciones del diagnóstico.        |
+| `active`       | BOOLEAN          | -         | Sí            | Disponibilidad del diagnóstico (Default: TRUE). |
+
+##### Tabla: `visit_diagnosis`
+
+*Descripción: Diagnósticos emitidos en una consulta (1NF / 2NF).*
+
+| **Campo**        | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                            |
+| ---------------- | ---------------- | --------- | ------------- | -------------------------------------------------------- |
+| `visit_id`       | BIGINT           | PK, FK    | Sí            | Referencia a `medical_visit(visit_id)`.                  |
+| `diagnosis_id`   | BIGINT           | PK, FK    | Sí            | Referencia a `diagnosis(diagnosis_id)`.                  |
+| `diagnosis_type` | VARCHAR(50)      | -         | Sí            | Clasificación (`Principal`, `Secundario`, `Presuntivo`). |
+| `observations`   | TEXT             | -         | No            | Anotaciones clínicas complementarias del diagnóstico.    |
+
+##### Tabla: `medical_procedure`
+
+*Descripción: Catálogo de procedimientos médicos u oftalmológicos.*
+
+| **Campo**      | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**    |
+| -------------- | ---------------- | --------- | ------------- | -------------------------------- |
+| `procedure_id` | BIGINT           | PK        | Sí            | Identificador del procedimiento. |
+| `code`         | VARCHAR(50)      | UK        | Sí            | Código de tarifario o CUPS.      |
+| `name`         | VARCHAR(100)     | -         | Sí            | Nombre del procedimiento médico. |
+| `description`  | VARCHAR(500)     | -         | No            | Descripción de ejecución.        |
+| `active`       | BOOLEAN          | -         | Sí            | Estado del registro.             |
+
+##### Tabla: `visit_procedure`
+
+*Descripción: Procedimientos efectuados durante una consulta.*
+
+| **Campo**            | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                   |
+| -------------------- | ---------------- | --------- | ------------- | ----------------------------------------------- |
+| `visit_procedure_id` | BIGINT           | PK        | Sí            | Identificador único de la ejecución.            |
+| `visit_id`           | BIGINT           | FK        | Sí            | Referencia a `medical_visit(visit_id)`.         |
+| `procedure_id`       | BIGINT           | FK        | Sí            | Referencia a `medical_procedure(procedure_id)`. |
+| `professional_id`    | BIGINT           | FK        | Sí            | Médico ejecutor.                                |
+| `eye_id`             | BIGINT           | FK        | Sí            | Ojo intervenido (OD/OI/OU).                     |
+| `performed_at`       | DATETIME         | -         | Sí            | Marca de tiempo del procedimiento.              |
+| `observations`       | TEXT             | -         | No            | Complicaciones o detalles del procedimiento.    |
+
+#### 7. Documentos Clínicos
+
+##### Tabla: `document_type`
+
+*Descripción: Tipos de adjuntos (Consentimientos, Resultados externos, Firma).*
+
+| **Campo**          | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**        |
+| ------------------ | ---------------- | --------- | ------------- | ------------------------------------ |
+| `document_type_id` | BIGINT           | PK        | Sí            | Identificador único.                 |
+| `name`             | VARCHAR(100)     | UK        | Sí            | Nombre de la categoría de documento. |
+| `description`      | VARCHAR(250)     | -         | No            | Detalle del propósito.               |
+
+##### Tabla: `clinical_document`
+
+*Descripción: Archivos digitalizados anexados a las consultas.*
+
+| **Campo**          | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                  |
+| ------------------ | ---------------- | --------- | ------------- | ---------------------------------------------- |
+| `document_id`      | BIGINT           | PK        | Sí            | Identificador único del archivo.               |
+| `visit_id`         | BIGINT           | FK        | Sí            | Consulta a la que se asocia.                   |
+| `document_type_id` | BIGINT           | FK        | Sí            | Categoría del documento.                       |
+| `uploaded_by`      | BIGINT           | FK        | Sí            | Usuario que cargó el archivo (`user_account`). |
+| `deleted_by`       | BIGINT           | FK        | No            | Usuario que realizó borrado lógico.            |
+| `file_name`        | VARCHAR(255)     | -         | Sí            | Nombre original del archivo en disco/servidor. |
+| `file_path`        | VARCHAR(500)     | -         | Sí            | Ruta lógica o URL del objeto almacenado.       |
+| `mime_type`        | VARCHAR(100)     | -         | Sí            | Formato mime (PDF, PNG, JPEG).                 |
+| `uploaded_at`      | DATETIME         | -         | Sí            | Fecha de carga del sistema.                    |
+| `deleted_at`       | DATETIME         | -         | No            | Fecha de eliminación (Soft delete).            |
+
+#### 8. Medicación y Tratamientos
+
+##### Tabla: `treatment_status`
+
+*Descripción: Estados del tratamiento (Activo, Finalizado, Suspendido).*
+
+| **Campo**             | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**  |
+| --------------------- | ---------------- | --------- | ------------- | ------------------------------ |
+| `treatment_status_id` | BIGINT           | PK        | Sí            | Identificador del estado.      |
+| `name`                | VARCHAR(80)      | UK        | Sí            | Nombre descriptivo del estado. |
+| `description`         | VARCHAR(250)     | -         | No            | Detalles del estado.           |
+
+##### Tabla: `treatment`
+
+*Descripción: Plan terapéutico indicado en una atención.*
+
+| **Campo**             | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**           |
+| --------------------- | ---------------- | --------- | ------------- | --------------------------------------- |
+| `treatment_id`        | BIGINT           | PK        | Sí            | Identificador del tratamiento.          |
+| `visit_id`            | BIGINT           | FK        | Sí            | Referencia a `medical_visit(visit_id)`. |
+| `treatment_status_id` | BIGINT           | FK        | Sí            | Estado del tratamiento.                 |
+| `description`         | TEXT             | -         | Sí            | Plan general del tratamiento.           |
+| `start_date`          | DATE             | -         | Sí            | Fecha inicial de indicación.            |
+| `end_date`            | DATE             | -         | No            | Fecha estimada o real de cierre.        |
+| `observations`        | TEXT             | -         | No            | Justificación clínica del tratamiento.  |
+
+##### Tabla: `medication`
+
+*Descripción: Vademécum o catálogo de fármacos oftálmicos.*
+
+| **Campo**           | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                |
+| ------------------- | ---------------- | --------- | ------------- | -------------------------------------------- |
+| `medication_id`     | BIGINT           | PK        | Sí            | Identificador del medicamento.               |
+| `name`              | VARCHAR(150)     | UK        | Sí            | Nombre comercial / común.                    |
+| `active_ingredient` | VARCHAR(150)     | -         | Sí            | Principio activo (ej. Latanoprost, Timolol). |
+| `concentration`     | VARCHAR(100)     | -         | No            | Concentración de la presentación (ej. 0.5%). |
+| `presentation`      | VARCHAR(100)     | -         | No            | Presentación (Gotas, Gel, Suspensión).       |
+
+##### Tabla: `treatment_medication`
+
+*Descripción: Medicamentos recetados dentro de un tratamiento (2NF / 4NF).*
+
+| **Campo**       | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**             |
+| --------------- | ---------------- | --------- | ------------- | ----------------------------------------- |
+| `treatment_id`  | BIGINT           | PK, FK    | Sí            | Referencia a `treatment(treatment_id)`.   |
+| `medication_id` | BIGINT           | PK, FK    | Sí            | Referencia a `medication(medication_id)`. |
+| `dosage`        | VARCHAR(100)     | -         | Sí            | Dosificación (ej: 1 gota).                |
+| `frequency`     | VARCHAR(100)     | -         | Sí            | Posología (ej: Cada 12 horas).            |
+| `duration`      | VARCHAR(100)     | -         | No            | Duración del tratamiento (ej: 30 días).   |
+| `instructions`  | TEXT             | -         | No            | Indicaciones adicionales al paciente.     |
+
+#### 9. Exámenes Clínicos y Parámetros
+
+##### Tabla: `unit_of_measure`
+
+*Descripción: Unidades físicas de medición.*
+
+| **Campo** | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                        |
+| --------- | ---------------- | --------- | ------------- | ---------------------------------------------------- |
+| `unit_id` | BIGINT           | PK        | Sí            | Identificador de la unidad.                          |
+| `name`    | VARCHAR(100)     | UK        | Sí            | Nombre (Milímetros de mercurio, Micras, Porcentaje). |
+| `symbol`  | VARCHAR(20)      | -         | Sí            | Simbología (`mmHg`, `µm`, `%`).                      |
+
+##### Tabla: `exam_type`
+
+*Descripción: Tipos de exámenes especializados (OCT, Campo Visual, Paquimetría).*
+
+| **Campo**      | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                      |
+| -------------- | ---------------- | --------- | ------------- | -------------------------------------------------- |
+| `exam_type_id` | BIGINT           | PK        | Sí            | Identificador del examen.                          |
+| `code`         | VARCHAR(50)      | UK        | Sí            | Código distintivo.                                 |
+| `name`         | VARCHAR(150)     | -         | Sí            | Nombre del estudio (OCT Mácula, Campimetría 24-2). |
+| `description`  | VARCHAR(250)     | -         | No            | Descripción analítica.                             |
+| `active`       | BOOLEAN          | -         | Sí            | Disponibilidad.                                    |
+
+##### Tabla: `exam_parameter`
+
+*Descripción: Definición de variables paramétricas medibles por tipo de examen.*
+
+| **Campo**      | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                         |
+| -------------- | ---------------- | --------- | ------------- | ----------------------------------------------------- |
+| `parameter_id` | BIGINT           | PK        | Sí            | Identificador de la variable.                         |
+| `exam_type_id` | BIGINT           | FK        | Sí            | Referencia a `exam_type(exam_type_id)`.               |
+| `unit_id`      | BIGINT           | FK        | No            | Referencia a `unit_of_measure(unit_id)`.              |
+| `name`         | VARCHAR(150)     | -         | Sí            | Nombre de la variable (Capa RNFL, VFI, CCT).          |
+| `data_type`    | VARCHAR(30)      | -         | Sí            | Tipo esperado (`NUMERIC`, `TEXT`, `BOOLEAN`, `DATE`). |
+| `description`  | VARCHAR(500)     | -         | No            | Especificaciones paramétricas.                        |
+| `required`     | BOOLEAN          | -         | Sí            | Indica si es obligatorio su diligenciamiento.         |
+
+##### Tabla: `exam_parameter_option`
+
+*Descripción: Opciones predefinidas para parámetros cualitativos o selecciones.*
+
+| **Campo**      | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                |
+| -------------- | ---------------- | --------- | ------------- | -------------------------------------------- |
+| `option_id`    | BIGINT           | PK        | Sí            | Identificador de la opción.                  |
+| `parameter_id` | BIGINT           | FK        | Sí            | Referencia a `exam_parameter(parameter_id)`. |
+| `value`        | VARCHAR(150)     | -         | Sí            | Valor de la lista desplegable.               |
+| `description`  | VARCHAR(250)     | -         | No            | Aclaraciones del valor.                      |
+
+##### Tabla: `clinical_exam`
+
+*Descripción: Cabecera de ejecución de un examen ordenado e interpretado.*
+
+| **Campo**          | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**            |
+| ------------------ | ---------------- | --------- | ------------- | ---------------------------------------- |
+| `clinical_exam_id` | BIGINT           | PK        | Sí            | Identificador del examen ejecutado.      |
+| `visit_id`         | BIGINT           | FK        | Sí            | Consulta donde fue efectuado.            |
+| `exam_type_id`     | BIGINT           | FK        | Sí            | Tipo de prueba especializada.            |
+| `professional_id`  | BIGINT           | FK        | Sí            | Médico evaluador/interprete.             |
+| `eye_id`           | BIGINT           | FK        | Sí            | Lateralidad examinada (OD/OI/OU).        |
+| `exam_date`        | DATETIME         | -         | Sí            | Fecha y hora del procedimiento.          |
+| `observations`     | TEXT             | -         | No            | Interpretación o conclusiones generales. |
+
+##### Tabla: `exam_result`
+
+*Descripción: Detalle paramétrico con valores capturados por cada estudio (1NF).*
+
+| **Campo**          | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                   |
+| ------------------ | ---------------- | --------- | ------------- | ----------------------------------------------- |
+| `clinical_exam_id` | BIGINT           | PK, FK    | Sí            | Referencia a `clinical_exam(clinical_exam_id)`. |
+| `parameter_id`     | BIGINT           | PK, FK    | Sí            | Referencia a `exam_parameter(parameter_id)`.    |
+| `value_text`       | TEXT             | -         | No            | Valor asignado si es de tipo alfanumérico.      |
+| `value_numeric`    | DECIMAL(12,4)    | -         | No            | Valor capturado si la variable es cuantitativa. |
+| `value_boolean`    | BOOLEAN          | -         | No            | Valor booleano de la prueba.                    |
+| `value_date`       | DATE             | -         | No            | Valor temporal registrado.                      |
+
+#### 10. Módulo Específico Oftalmológico (Glaucoma, PIO y Alertas)
+
+##### Tabla: `intraocular_pressure`
+
+*Descripción: Registro dedicado para el monitoreo de Presión Intraocular (PIO).*
+
+| **Campo**        | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                                |
+| ---------------- | ---------------- | --------- | ------------- | ------------------------------------------------------------ |
+| `pressure_id`    | BIGINT           | PK        | Sí            | Identificador de la tonometría.                              |
+| `visit_id`       | BIGINT           | FK        | Sí            | Referencia a `medical_visit(visit_id)`.                      |
+| `eye_id`         | BIGINT           | FK        | Sí            | Referencia a `eye(eye_id)` (`OD` u `OI`).                    |
+| `measured_at`    | DATETIME         | -         | Sí            | Marca de tiempo precisa de la toma.                          |
+| `pressure_value` | DECIMAL(6,2)     | -         | Sí            | Medición numérica de la presión.                             |
+| `unit`           | VARCHAR(20)      | -         | Sí            | Unidad de medida (Default: 'mmHg').                          |
+| `method`         | VARCHAR(100)     | -         | No            | Instrumental o método utilizado (Aplanación Goldmann, Aire). |
+
+##### Tabla: `glaucoma_type`
+
+*Descripción: Clasificación médica de glaucomas.*
+
+| **Campo**          | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                                |
+| ------------------ | ---------------- | --------- | ------------- | ------------------------------------------------------------ |
+| `glaucoma_type_id` | BIGINT           | PK        | Sí            | Identificador del tipo.                                      |
+| `name`             | VARCHAR(100)     | UK        | Sí            | Nombre (Glaucoma Ángulo Abierto, Ángulo Cerrado, Congénito). |
+| `description`      | VARCHAR(500)     | -         | No            | Manifestaciones clínicas y criterios diagnósticos.           |
+
+##### Tabla: `glaucoma_record`
+
+*Descripción: Expediente específico del paciente diagnosticado con glaucoma.*
+
+| **Campo**            | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                          |
+| -------------------- | ---------------- | --------- | ------------- | ------------------------------------------------------ |
+| `glaucoma_record_id` | BIGINT           | PK        | Sí            | Identificador del expediente del glaucoma.             |
+| `patient_id`         | BIGINT           | FK        | Sí            | Paciente con la patología.                             |
+| `eye_id`             | BIGINT           | FK        | Sí            | Ojo afectado (OD/OI/OU).                               |
+| `glaucoma_type_id`   | BIGINT           | FK        | Sí            | Clasificación del glaucoma.                            |
+| `diagnosis_date`     | DATE             | -         | Sí            | Fecha oficial de confirmación diagnóstica.             |
+| `active`             | BOOLEAN          | -         | Sí            | Estado del registro (Default: TRUE).                   |
+| `observations`       | TEXT             | -         | No            | Meta de presión objetivo (PIO Target) o estadiamiento. |
+
+##### Tabla: `glaucoma_control`
+
+*Descripción: Ficha de seguimiento periódico del glaucoma por consulta.*
+
+| **Campo**             | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**              |
+| --------------------- | ---------------- | --------- | ------------- | ------------------------------------------ |
+| `glaucoma_control_id` | BIGINT           | PK        | Sí            | Identificador de la ficha de control.      |
+| `glaucoma_record_id`  | BIGINT           | FK        | Sí            | Expediente de origen `glaucoma_record`.    |
+| `visit_id`            | BIGINT           | FK        | Sí            | Consulta en la que se efectúa el control.  |
+| `control_date`        | DATE             | -         | Sí            | Fecha de la valoración de control.         |
+| `observations`        | TEXT             | -         | No            | Evolución de la excavación o campo visual. |
+
+##### Tabla: `alert`
+
+*Descripción: Alertas automatizadas por presiones críticas o requerimientos de seguimiento.*
+
+| **Campo**     | **Tipo de Dato** | **Llave** | **Requerido** | **Descripción / Restricción**                                |
+| ------------- | ---------------- | --------- | ------------- | ------------------------------------------------------------ |
+| `alert_id`    | BIGINT           | PK        | Sí            | Identificador único de la alerta.                            |
+| `patient_id`  | BIGINT           | FK        | Sí            | Referencia a `patient(patient_id)`.                          |
+| `created_by`  | BIGINT           | FK        | Sí            | Usuario que desencadena o registra la alerta (`user_account`). |
+| `visit_id`    | BIGINT           | FK        | No            | Consulta que originó el aviso.                               |
+| `title`       | VARCHAR(100)     | -         | Sí            | Título descriptivo (ej: `PIO ELEVADA`).                      |
+| `message`     | TEXT             | -         | Sí            | Mensaje o sugerencia de intervención médica.                 |
+| `alert_type`  | VARCHAR(50)      | -         | Sí            | Clasificación de riesgo (`ALERTA`, `CRÍTICA`, `SEGUIMIENTO`). |
+| `created_at`  | DATETIME         | -         | Sí            | Marca de tiempo de emisión.                                  |
+| `resolved_at` | DATETIME         | -         | No            | Fecha en la que la alerta fue atendida o desactivada.        |
 
 # 40. Producto final esperado
 
@@ -1107,6 +1986,39 @@ El proyecto deberá entregar:
 # 42. Pregunta orientadora final
 
 **¿Cómo modelar, normalizar e implementar en MySQL una base de datos relacional para historias clínicas de oftalmología y glaucoma que permita garantizar integridad, reducir redundancia y soportar consultas y procesos SQL de diferentes niveles de complejidad?**
+
+### 1. Diseñar el Modelo Entidad-Relación por Módulos
+
+Divide el sistema en componentes claros para evitar mezclar responsabilidades:
+
+- **Personas y Usuarios:** Separa los datos de la persona (`person`) de sus roles (`patient`, `healthcare_professional`, `user_account`). Así evitas duplicar información si un médico también es paciente.
+- **Atención Clínica:** Conecta las citas (`appointment`), la historia clínica (`clinical_history`), las consultas (`medical_visit`), los diagnósticos y los procedimientos.
+- **Módulo Oftalmológico:** Crea tablas específicas para la presión intraocular (`intraocular_pressure`), la lateralidad del ojo (`eye`: OD/OI), el control del glaucoma (`glaucoma_record`, `glaucoma_control`) y los exámenes (`clinical_exam`).
+
+### 2. Normalizar hasta 4NF
+
+Aplica las reglas de normalización para eliminar redundancias y evitar errores al insertar, editar o borrar datos:
+
+- **1NF:** Atomiza todos los campos (separa nombres/apellidos y almacena resultados de exámenes en filas independientes, no en listas de texto).
+- **2NF:** Asegura que en tablas intermedias con llaves compuestas (como `treatment_medication`), cada atributo dependa de la clave completa.
+- **3NF:** Elimina dependencias transitivas (extrae las especialidades a `specialty` y las ciudades a `city`).
+- **4NF:** Elimina dependencias multivaluadas independientes (gestiona antecedentes y alergias en tablas separadas ligadas al paciente).
+
+### 3. Garantizar Integridad y Lógica de Negocio
+
+Protege la coherencia de la información médica desde la base de datos:
+
+- **Llaves Foráneas (`FK`):** Usa reglas de restricción (`RESTRICT`) en tablas críticas para impedir que se borre a un paciente que tenga historial.
+- **Restricciones Unicas (`UNIQUE`):** Asegura que no existan documentos, licencias médicas ni números de historia clínica duplicados.
+- **Triggers y Funciones:** Automatiza la validación de reglas clínicas (ej. evitar fechas incoherentes de tratamiento, calcular edades o registrar auditorías en `audit_log`).
+
+### 4. Soporte para Consultas de Diferente Complejidad
+
+Gracias a los índices en claves primarias (`BIGINT`) y foráneas, la estructura soporta desde operaciones diarias hasta analítica avanzada:
+
+- **Transacciones rápidas (OLTP):** Búsquedas directas de pacientes, citas o consultas por ID.
+- **Seguimiento clínico:** Historial de la PIO de un paciente o listado de tratamientos activos.
+- **Analítica y Reportes:** Agregaciones complejas (`AVG`, `MAX`, `COUNT`) para calcular la presión intraocular máxima, promedios por ojo o el total de exámenes OCT realizados por período sin degradar el rendimiento.
 
 # Banco de 250 ejercicios MySQL
 
@@ -5489,41 +6401,294 @@ END$$
 
 Crear un procedimiento para registrar un nuevo paciente.
 
+```sql
+DROP PROCEDURE IF EXISTS sp_register_patient$$
+CREATE PROCEDURE sp_register_patient(
+    IN p_identification_type_id INT,
+    IN p_identification_number VARCHAR(50),
+    IN p_first_name VARCHAR(100),
+    IN p_middle_name VARCHAR(100),
+    IN p_last_name VARCHAR(100),
+    IN p_second_last_name VARCHAR(100),
+    IN p_birth_date DATE,
+    IN p_gender VARCHAR(20),
+    IN p_city_id INT,
+    IN p_admission_date DATE,
+    OUT p_new_patient_id INT
+)
+BEGIN
+    DECLARE v_person_id INT;
+
+    INSERT INTO person (
+        identification_type_id, identification_number, first_name, middle_name,
+        last_name, second_last_name, birth_date, gender, city_id
+    )
+    VALUES (
+        p_identification_type_id, p_identification_number, p_first_name, p_middle_name,
+        p_last_name, p_second_last_name, p_birth_date, p_gender, p_city_id
+    );
+
+    SET v_person_id = LAST_INSERT_ID();
+
+    INSERT INTO patient (person_id, admission_date, active)
+    VALUES (v_person_id, IFNULL(p_admission_date, CURDATE()), TRUE);
+
+    SET p_new_patient_id = LAST_INSERT_ID();
+END$$
+```
+
+
+
 ### 12.
 
 Crear un procedimiento para crear una historia clínica.
+
+```sql
+DROP PROCEDURE IF EXISTS sp_create_clinical_history;
+DELIMITER $$
+CREATE PROCEDURE sp_create_clinical_history(
+    IN p_patient_id BIGINT,
+    IN p_history_number VARCHAR(50),
+    OUT p_clinical_history_id BIGINT
+)
+BEGIN
+    INSERT INTO clinical_history (patient_id, history_number, created_at)
+    VALUES (p_patient_id, p_history_number, NOW());
+    
+    SET p_clinical_history_id = LAST_INSERT_ID();
+END $$
+DELIMITER ;
+```
 
 ### 13.
 
 Crear un procedimiento para registrar una consulta médica.
 
+```sql
+DROP PROCEDURE IF EXISTS sp_register_medical_visit;
+DELIMITER $$
+CREATE PROCEDURE sp_register_medical_visit(
+    IN p_clinical_history_id BIGINT,
+    IN p_appointment_id BIGINT,
+    IN p_professional_id BIGINT,
+    IN p_visit_type_id BIGINT,
+    IN p_reason TEXT,
+    IN p_observations TEXT,
+    OUT p_visit_id BIGINT
+)
+BEGIN
+    INSERT INTO medical_visit (
+        clinical_history_id, appointment_id, professional_id,
+        visit_type_id, visit_date, reason, observations
+    )
+    VALUES (
+        p_clinical_history_id, p_appointment_id, p_professional_id,
+        p_visit_type_id, NOW(), p_reason, p_observations
+    );
+    
+    SET p_visit_id = LAST_INSERT_ID();
+END $$
+DELIMITER ;
+```
+
 ### 14.
 
 Crear un procedimiento para registrar un diagnóstico asociado a una consulta.
+
+```sql
+DROP PROCEDURE IF EXISTS sp_register_visit_diagnosis;
+DELIMITER $$
+CREATE PROCEDURE sp_register_visit_diagnosis(
+    IN p_visit_id BIGINT,
+    IN p_diagnosis_id BIGINT,
+    IN p_diagnosis_type VARCHAR(50),
+    IN p_observations TEXT
+)
+BEGIN
+    INSERT INTO visit_diagnosis (visit_id, diagnosis_id, diagnosis_type, observations)
+    VALUES (p_visit_id, p_diagnosis_id, p_diagnosis_type, p_observations);
+END $$
+DELIMITER ;
+```
 
 ### 15.
 
 Crear un procedimiento para registrar una medición de PIO.
 
+```sql
+DROP PROCEDURE IF EXISTS sp_register_intraocular_pressure;
+DELIMITER $$
+CREATE PROCEDURE sp_register_intraocular_pressure(
+    IN p_visit_id BIGINT,
+    IN p_eye_id BIGINT,
+    IN p_pressure_value DECIMAL(6,2),
+    IN p_method VARCHAR(100),
+    OUT p_pressure_id BIGINT
+)
+BEGIN
+    INSERT INTO intraocular_pressure (visit_id, eye_id, measured_at, pressure_value, unit, method)
+    VALUES (p_visit_id, p_eye_id, NOW(), p_pressure_value, 'mmHg', p_method);
+    
+    SET p_pressure_id = LAST_INSERT_ID();
+END $$
+DELIMITER ;
+```
+
 ### 16.
 
 Crear un procedimiento para registrar un control de glaucoma.
+
+```sql
+DROP PROCEDURE IF EXISTS sp_register_glaucoma_control;
+DELIMITER $$
+CREATE PROCEDURE sp_register_glaucoma_control(
+    IN p_glaucoma_record_id BIGINT,
+    IN p_visit_id BIGINT,
+    IN p_control_date DATE,
+    IN p_observations TEXT,
+    OUT p_control_id BIGINT
+)
+BEGIN
+    INSERT INTO glaucoma_control (glaucoma_record_id, visit_id, control_date, observations)
+    VALUES (p_glaucoma_record_id, p_visit_id, IFNULL(p_control_date, CURDATE()), p_observations);
+    
+    SET p_control_id = LAST_INSERT_ID();
+END $$
+DELIMITER ;
+```
 
 ### 17.
 
 Crear un procedimiento para registrar un examen OCT.
 
+```sql
+DROP PROCEDURE IF EXISTS sp_register_oct_exam;
+DELIMITER $$
+CREATE PROCEDURE sp_register_oct_exam(
+    IN p_visit_id BIGINT,
+    IN p_professional_id BIGINT,
+    IN p_eye_id BIGINT,
+    IN p_rnfl_value DECIMAL(12,4),
+    IN p_observations TEXT,
+    OUT p_exam_id BIGINT
+)
+BEGIN
+    DECLARE v_exam_type_id BIGINT;
+    DECLARE v_param_id BIGINT;
+
+    SELECT exam_type_id INTO v_exam_type_id FROM exam_type WHERE name LIKE '%OCT%' LIMIT 1;
+    IF v_exam_type_id IS NULL THEN
+        SELECT exam_type_id INTO v_exam_type_id FROM exam_type LIMIT 1;
+    END IF;
+
+    INSERT INTO clinical_exam (visit_id, exam_type_id, professional_id, eye_id, exam_date, observations)
+    VALUES (p_visit_id, v_exam_type_id, p_professional_id, p_eye_id, NOW(), p_observations);
+    
+    SET p_exam_id = LAST_INSERT_ID();
+
+    SELECT parameter_id INTO v_param_id FROM exam_parameter WHERE exam_type_id = v_exam_type_id LIMIT 1;
+    IF v_param_id IS NOT NULL THEN
+        INSERT INTO exam_result (clinical_exam_id, parameter_id, value_numeric)
+        VALUES (p_exam_id, v_param_id, p_rnfl_value);
+    END IF;
+END $$
+DELIMITER ;
+```
+
 ### 18.
 
 Crear un procedimiento para registrar un campo visual.
+
+```sql
+DROP PROCEDURE IF EXISTS sp_register_visual_field;
+DELIMITER $$
+CREATE PROCEDURE sp_register_visual_field(
+    IN p_visit_id BIGINT,
+    IN p_professional_id BIGINT,
+    IN p_eye_id BIGINT,
+    IN p_vfi_value DECIMAL(12,4),
+    IN p_observations TEXT,
+    OUT p_exam_id BIGINT
+)
+BEGIN
+    DECLARE v_exam_type_id BIGINT;
+    DECLARE v_param_id BIGINT;
+
+    SELECT exam_type_id INTO v_exam_type_id FROM exam_type WHERE name LIKE '%Campimetría%' OR name LIKE '%Campo visual%' LIMIT 1;
+
+    INSERT INTO clinical_exam (visit_id, exam_type_id, professional_id, eye_id, exam_date, observations)
+    VALUES (p_visit_id, v_exam_type_id, p_professional_id, p_eye_id, NOW(), p_observations);
+    
+    SET p_exam_id = LAST_INSERT_ID();
+
+    SELECT parameter_id INTO v_param_id FROM exam_parameter WHERE exam_type_id = v_exam_type_id LIMIT 1;
+    IF v_param_id IS NOT NULL THEN
+        INSERT INTO exam_result (clinical_exam_id, parameter_id, value_numeric)
+        VALUES (p_exam_id, v_param_id, p_vfi_value);
+    END IF;
+END $$
+DELIMITER ;
+```
 
 ### 19.
 
 Crear un procedimiento para registrar una paquimetría.
 
+```sql
+DROP PROCEDURE IF EXISTS sp_register_pachymetry;
+DELIMITER $$
+CREATE PROCEDURE sp_register_pachymetry(
+    IN p_visit_id BIGINT,
+    IN p_professional_id BIGINT,
+    IN p_eye_id BIGINT,
+    IN p_thickness DECIMAL(12,4),
+    IN p_observations TEXT,
+    OUT p_exam_id BIGINT
+)
+BEGIN
+    DECLARE v_exam_type_id BIGINT;
+    DECLARE v_param_id BIGINT;
+
+    SELECT exam_type_id INTO v_exam_type_id FROM exam_type WHERE name LIKE '%Paquimetría%' LIMIT 1;
+
+    INSERT INTO clinical_exam (visit_id, exam_type_id, professional_id, eye_id, exam_date, observations)
+    VALUES (p_visit_id, v_exam_type_id, p_professional_id, p_eye_id, NOW(), p_observations);
+    
+    SET p_exam_id = LAST_INSERT_ID();
+
+    SELECT parameter_id INTO v_param_id FROM exam_parameter WHERE exam_type_id = v_exam_type_id LIMIT 1;
+    IF v_param_id IS NOT NULL THEN
+        INSERT INTO exam_result (clinical_exam_id, parameter_id, value_numeric)
+        VALUES (p_exam_id, v_param_id, p_thickness);
+    END IF;
+END $$
+DELIMITER ;
+```
+
 ### 20.
 
 Crear un procedimiento para registrar un tratamiento.
+
+```sql
+DROP PROCEDURE IF EXISTS sp_register_treatment;
+DELIMITER $$
+CREATE PROCEDURE sp_register_treatment(
+    IN p_visit_id BIGINT,
+    IN p_treatment_status_id BIGINT,
+    IN p_description TEXT,
+    IN p_start_date DATE,
+    IN p_end_date DATE,
+    IN p_observations TEXT,
+    OUT p_treatment_id BIGINT
+)
+BEGIN
+    INSERT INTO treatment (visit_id, treatment_status_id, description, start_date, end_date, observations)
+    VALUES (p_visit_id, p_treatment_status_id, p_description, p_start_date, p_end_date, p_observations);
+    
+    SET p_treatment_id = LAST_INSERT_ID();
+END $$
+DELIMITER ;
+```
 
 ## Procedimientos de modificación
 
@@ -5531,41 +6696,209 @@ Crear un procedimiento para registrar un tratamiento.
 
 Crear un procedimiento para actualizar teléfono y correo de un paciente.
 
+```sql
+DROP PROCEDURE IF EXISTS sp_update_patient_contact;
+DELIMITER $$
+CREATE PROCEDURE sp_update_patient_contact(
+    IN p_patient_id BIGINT,
+    IN p_phone VARCHAR(30),
+    IN p_email VARCHAR(150)
+)
+BEGIN
+    UPDATE person pe
+    INNER JOIN patient pa ON pa.person_id = pe.person_id
+    SET pe.phone = p_phone,
+        pe.email = p_email
+    WHERE pa.patient_id = p_patient_id;
+END $$
+DELIMITER ;
+```
+
 ### 22.
 
 Crear un procedimiento para modificar el estado de una historia clínica.
+
+```sql
+DROP PROCEDURE IF EXISTS sp_update_patient_status;
+DELIMITER $$
+CREATE PROCEDURE sp_update_patient_status(
+    IN p_patient_id BIGINT,
+    IN p_active BOOLEAN
+)
+BEGIN
+    UPDATE patient
+    SET active = p_active
+    WHERE patient_id = p_patient_id;
+END $$
+DELIMITER ;
+```
 
 ### 23.
 
 Crear un procedimiento para actualizar observaciones de una consulta.
 
+```sql
+DROP PROCEDURE IF EXISTS sp_update_visit_observations;
+DELIMITER $$
+CREATE PROCEDURE sp_update_visit_observations(
+    IN p_visit_id BIGINT,
+    IN p_observations TEXT
+)
+BEGIN
+    UPDATE medical_visit
+    SET observations = p_observations
+    WHERE visit_id = p_visit_id;
+END $$
+DELIMITER ;
+```
+
 ### 24.
 
 Crear un procedimiento para modificar la presión objetivo de un paciente con glaucoma.
+
+```sql
+DROP PROCEDURE IF EXISTS sp_update_glaucoma_target_pressure;
+DELIMITER $$
+CREATE PROCEDURE sp_update_glaucoma_target_pressure(
+    IN p_glaucoma_record_id BIGINT,
+    IN p_observations TEXT
+)
+BEGIN
+    UPDATE glaucoma_record
+    SET observations = p_observations
+    WHERE glaucoma_record_id = p_glaucoma_record_id;
+END $$
+DELIMITER ;
+```
 
 ### 25.
 
 Crear un procedimiento para finalizar un tratamiento.
 
+```sql
+DROP PROCEDURE IF EXISTS sp_finalize_treatment;
+DELIMITER $$
+CREATE PROCEDURE sp_finalize_treatment(
+    IN p_treatment_id BIGINT
+)
+BEGIN
+    DECLARE v_status_id BIGINT;
+    SELECT treatment_status_id INTO v_status_id FROM treatment_status WHERE name = 'Finalizado' LIMIT 1;
+
+    UPDATE treatment
+    SET treatment_status_id = v_status_id,
+        end_date = CURDATE()
+    WHERE treatment_id = p_treatment_id;
+END $$
+DELIMITER ;
+```
+
 ### 26.
 
 Crear un procedimiento para cambiar el medicamento de un tratamiento.
+
+```sql
+DROP PROCEDURE IF EXISTS sp_change_treatment_medication;
+DELIMITER $$
+CREATE PROCEDURE sp_change_treatment_medication(
+    IN p_treatment_id BIGINT,
+    IN p_old_medication_id BIGINT,
+    IN p_new_medication_id BIGINT,
+    IN p_dosage VARCHAR(100),
+    IN p_frequency VARCHAR(100)
+)
+BEGIN
+    DELETE FROM treatment_medication
+    WHERE treatment_id = p_treatment_id AND medication_id = p_old_medication_id;
+
+    INSERT INTO treatment_medication (treatment_id, medication_id, dosage, frequency)
+    VALUES (p_treatment_id, p_new_medication_id, p_dosage, p_frequency);
+END $$
+DELIMITER ;
+```
 
 ### 27.
 
 Crear un procedimiento para actualizar el estado clínico del glaucoma.
 
+```sql
+DROP PROCEDURE IF EXISTS sp_update_glaucoma_status;
+DELIMITER $$
+CREATE PROCEDURE sp_update_glaucoma_status(
+    IN p_glaucoma_record_id BIGINT,
+    IN p_active BOOLEAN,
+    IN p_observations TEXT
+)
+BEGIN
+    UPDATE glaucoma_record
+    SET active = p_active,
+        observations = p_observations
+    WHERE glaucoma_record_id = p_glaucoma_record_id;
+END $$
+DELIMITER ;
+```
+
 ### 28.
 
 Crear un procedimiento para actualizar información de un profesional.
+
+```sql
+DROP PROCEDURE IF EXISTS sp_update_professional_info;
+DELIMITER $$
+CREATE PROCEDURE sp_update_professional_info(
+    IN p_professional_id BIGINT,
+    IN p_license VARCHAR(50),
+    IN p_phone VARCHAR(30),
+    IN p_email VARCHAR(150)
+)
+BEGIN
+    UPDATE healthcare_professional hp
+    INNER JOIN person pe ON pe.person_id = hp.person_id
+    SET hp.professional_license = p_license,
+        pe.phone = p_phone,
+        pe.email = p_email
+    WHERE hp.professional_id = p_professional_id;
+END $$
+DELIMITER ;
+```
 
 ### 29.
 
 Crear un procedimiento para modificar la interpretación de un OCT.
 
+```sql
+DROP PROCEDURE IF EXISTS sp_update_oct_interpretation;
+DELIMITER $$
+CREATE PROCEDURE sp_update_oct_interpretation(
+    IN p_clinical_exam_id BIGINT,
+    IN p_observations TEXT
+)
+BEGIN
+    UPDATE clinical_exam
+    SET observations = p_observations
+    WHERE clinical_exam_id = p_clinical_exam_id;
+END $$
+DELIMITER ;
+```
+
 ### 30.
 
 Crear un procedimiento para actualizar la interpretación de un campo visual.
+
+```sql
+DROP PROCEDURE IF EXISTS sp_update_visual_field_interpretation;
+DELIMITER $$
+CREATE PROCEDURE sp_update_visual_field_interpretation(
+    IN p_clinical_exam_id BIGINT,
+    IN p_observations TEXT
+)
+BEGIN
+    UPDATE clinical_exam
+    SET observations = p_observations
+    WHERE clinical_exam_id = p_clinical_exam_id;
+END $$
+DELIMITER ;
+```
 
 ## Procedimientos con validaciones
 
@@ -5573,41 +6906,266 @@ Crear un procedimiento para actualizar la interpretación de un campo visual.
 
 Crear un procedimiento que registre una PIO únicamente si el paciente existe.
 
+```sql
+DROP PROCEDURE IF EXISTS sp_register_pio_if_patient_exists;
+DELIMITER $$
+CREATE PROCEDURE sp_register_pio_if_patient_exists(
+    IN p_patient_id BIGINT,
+    IN p_visit_id BIGINT,
+    IN p_eye_id BIGINT,
+    IN p_pressure_value DECIMAL(6,2)
+)
+BEGIN
+    IF EXISTS (SELECT 1 FROM patient WHERE patient_id = p_patient_id) THEN
+        INSERT INTO intraocular_pressure (visit_id, eye_id, measured_at, pressure_value, unit)
+        VALUES (p_visit_id, p_eye_id, NOW(), p_pressure_value, 'mmHg');
+    ELSE
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El paciente especificado no existe';
+    END IF;
+END $$
+DELIMITER ;
+```
+
 ### 32.
 
 Crear un procedimiento que registre una consulta solo si existe la historia clínica.
+
+```sql
+DROP PROCEDURE IF EXISTS sp_register_visit_if_history_exists;
+DELIMITER $$
+CREATE PROCEDURE sp_register_visit_if_history_exists(
+    IN p_clinical_history_id BIGINT,
+    IN p_professional_id BIGINT,
+    IN p_visit_type_id BIGINT,
+    IN p_reason TEXT
+)
+BEGIN
+    IF EXISTS (SELECT 1 FROM clinical_history WHERE clinical_history_id = p_clinical_history_id) THEN
+        INSERT INTO medical_visit (clinical_history_id, professional_id, visit_type_id, visit_date, reason)
+        VALUES (p_clinical_history_id, p_professional_id, p_visit_type_id, NOW(), p_reason);
+    ELSE
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La historia clínica especificada no existe';
+    END IF;
+END $$
+DELIMITER ;
+```
 
 ### 33.
 
 Crear un procedimiento que impida registrar un tratamiento con fecha final anterior a la inicial.
 
+```sql
+DROP PROCEDURE IF EXISTS sp_register_treatment_validated;
+DELIMITER $$
+CREATE PROCEDURE sp_register_treatment_validated(
+    IN p_visit_id BIGINT,
+    IN p_treatment_status_id BIGINT,
+    IN p_description TEXT,
+    IN p_start_date DATE,
+    IN p_end_date DATE
+)
+BEGIN
+    IF p_end_date IS NOT NULL AND p_end_date < p_start_date THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La fecha final no puede ser anterior a la inicial';
+    ELSE
+        INSERT INTO treatment (visit_id, treatment_status_id, description, start_date, end_date)
+        VALUES (p_visit_id, p_treatment_status_id, p_description, p_start_date, p_end_date);
+    END IF;
+END $$
+DELIMITER ;
+```
+
 ### 34.
 
 Crear un procedimiento que impida registrar valores negativos de PIO.
 
+```sql
+DROP PROCEDURE IF EXISTS sp_register_pio_positive;
+DELIMITER $$
+CREATE PROCEDURE sp_register_pio_positive(
+    IN p_visit_id BIGINT,
+    IN p_eye_id BIGINT,
+    IN p_pressure_value DECIMAL(6,2)
+)
+BEGIN
+    IF p_pressure_value < 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La presión intraocular no puede ser negativa';
+    ELSE
+        INSERT INTO intraocular_pressure (visit_id, eye_id, measured_at, pressure_value, unit)
+        VALUES (p_visit_id, p_eye_id, NOW(), p_pressure_value, 'mmHg');
+    END IF;
+END $$
+DELIMITER ;
+```
+
 ### 35.
 
-Crear un procedimiento que valide que el ojo recibido sea `OD` u `OI`.
+Crear un procedimiento que valide que el ojo recibido sea OD u OI.
+
+```sql
+DROP PROCEDURE IF EXISTS sp_register_pio_validate_eye;
+DELIMITER $$
+CREATE PROCEDURE sp_register_pio_validate_eye(
+    IN p_visit_id BIGINT,
+    IN p_eye_code VARCHAR(20),
+    IN p_pressure_value DECIMAL(6,2)
+)
+BEGIN
+    DECLARE v_eye_id BIGINT;
+    
+    IF p_eye_code NOT IN ('OD', 'OI', 'OS') THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El ojo debe ser OD u OI';
+    ELSE
+        SELECT eye_id INTO v_eye_id FROM eye WHERE code = p_eye_code LIMIT 1;
+        INSERT INTO intraocular_pressure (visit_id, eye_id, measured_at, pressure_value, unit)
+        VALUES (p_visit_id, v_eye_id, NOW(), p_pressure_value, 'mmHg');
+    END IF;
+END $$
+DELIMITER ;
+```
 
 ### 36.
 
 Crear un procedimiento que impida crear dos historias clínicas para el mismo paciente.
 
+```sql
+DROP PROCEDURE IF EXISTS sp_create_clinical_history_unique;
+DELIMITER $$
+CREATE PROCEDURE sp_create_clinical_history_unique(
+    IN p_patient_id BIGINT,
+    IN p_history_number VARCHAR(50)
+)
+BEGIN
+    IF EXISTS (SELECT 1 FROM clinical_history WHERE patient_id = p_patient_id) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El paciente ya posee una historia clínica';
+    ELSE
+        INSERT INTO clinical_history (patient_id, history_number, created_at)
+        VALUES (p_patient_id, p_history_number, NOW());
+    END IF;
+END $$
+DELIMITER ;
+```
+
 ### 37.
 
 Crear un procedimiento que registre un diagnóstico solo si existe en el catálogo.
+
+```sql
+DROP PROCEDURE IF EXISTS sp_register_diagnosis_validated;
+DELIMITER $$
+CREATE PROCEDURE sp_register_diagnosis_validated(
+    IN p_visit_id BIGINT,
+    IN p_diagnosis_id BIGINT,
+    IN p_diagnosis_type VARCHAR(50)
+)
+BEGIN
+    IF EXISTS (SELECT 1 FROM diagnosis WHERE diagnosis_id = p_diagnosis_id) THEN
+        INSERT INTO visit_diagnosis (visit_id, diagnosis_id, diagnosis_type)
+        VALUES (p_visit_id, p_diagnosis_id, p_diagnosis_type);
+    ELSE
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El diagnóstico no existe en el catálogo';
+    END IF;
+END $$
+DELIMITER ;
+```
 
 ### 38.
 
 Crear un procedimiento que valide que el profesional se encuentre activo antes de registrar una consulta.
 
+```sql
+DROP PROCEDURE IF EXISTS sp_register_visit_active_prof;
+DELIMITER $$
+CREATE PROCEDURE sp_register_visit_active_prof(
+    IN p_clinical_history_id BIGINT,
+    IN p_professional_id BIGINT,
+    IN p_visit_type_id BIGINT,
+    IN p_reason TEXT
+)
+BEGIN
+    IF EXISTS (SELECT 1 FROM healthcare_professional WHERE professional_id = p_professional_id AND active = TRUE) THEN
+        INSERT INTO medical_visit (clinical_history_id, professional_id, visit_type_id, visit_date, reason)
+        VALUES (p_clinical_history_id, p_professional_id, p_visit_type_id, NOW(), p_reason);
+    ELSE
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El profesional no existe o no se encuentra activo';
+    END IF;
+END $$
+DELIMITER ;
+```
+
 ### 39.
 
 Crear un procedimiento que registre un campo visual validando que VFI esté entre 0 y 100.
 
+```sql
+DROP PROCEDURE IF EXISTS sp_register_visual_field_vfi_check;
+DELIMITER $$
+CREATE PROCEDURE sp_register_visual_field_vfi_check(
+    IN p_visit_id BIGINT,
+    IN p_professional_id BIGINT,
+    IN p_eye_id BIGINT,
+    IN p_vfi DECIMAL(12,4)
+)
+BEGIN
+    DECLARE v_exam_id BIGINT;
+    DECLARE v_exam_type_id BIGINT;
+    DECLARE v_param_id BIGINT;
+
+    IF p_vfi < 0 OR p_vfi > 100 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El VFI debe estar entre 0 y 100';
+    ELSE
+        SELECT exam_type_id INTO v_exam_type_id FROM exam_type WHERE name LIKE '%Campo visual%' OR name LIKE '%Campimetría%' LIMIT 1;
+        INSERT INTO clinical_exam (visit_id, exam_type_id, professional_id, eye_id, exam_date)
+        VALUES (p_visit_id, v_exam_type_id, p_professional_id, p_eye_id, NOW());
+        
+        SET v_exam_id = LAST_INSERT_ID();
+        SELECT parameter_id INTO v_param_id FROM exam_parameter WHERE exam_type_id = v_exam_type_id LIMIT 1;
+        
+        IF v_param_id IS NOT NULL THEN
+            INSERT INTO exam_result (clinical_exam_id, parameter_id, value_numeric)
+            VALUES (v_exam_id, v_param_id, p_vfi);
+        END IF;
+    END IF;
+END $$
+DELIMITER ;
+```
+
 ### 40.
 
 Crear un procedimiento que registre una paquimetría validando que el valor sea positivo.
+
+```sql
+DROP PROCEDURE IF EXISTS sp_register_pachymetry_positive;
+DELIMITER $$
+CREATE PROCEDURE sp_register_pachymetry_positive(
+    IN p_visit_id BIGINT,
+    IN p_professional_id BIGINT,
+    IN p_eye_id BIGINT,
+    IN p_thickness DECIMAL(12,4)
+)
+BEGIN
+    DECLARE v_exam_id BIGINT;
+    DECLARE v_exam_type_id BIGINT;
+    DECLARE v_param_id BIGINT;
+
+    IF p_thickness <= 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El valor de paquimetría debe ser positivo';
+    ELSE
+        SELECT exam_type_id INTO v_exam_type_id FROM exam_type WHERE name LIKE '%Paquimetría%' LIMIT 1;
+        INSERT INTO clinical_exam (visit_id, exam_type_id, professional_id, eye_id, exam_date)
+        VALUES (p_visit_id, v_exam_type_id, p_professional_id, p_eye_id, NOW());
+        
+        SET v_exam_id = LAST_INSERT_ID();
+        SELECT parameter_id INTO v_param_id FROM exam_parameter WHERE exam_type_id = v_exam_type_id LIMIT 1;
+        
+        IF v_param_id IS NOT NULL THEN
+            INSERT INTO exam_result (clinical_exam_id, parameter_id, value_numeric)
+            VALUES (v_exam_id, v_param_id, p_thickness);
+        END IF;
+    END IF;
+END $$
+DELIMITER ;
+```
 
 ## Procedimientos avanzados
 
@@ -5615,253 +7173,1273 @@ Crear un procedimiento que registre una paquimetría validando que el valor sea 
 
 Crear un procedimiento que devuelva un resumen completo de la historia clínica de un paciente.
 
+```sql
+DROP PROCEDURE IF EXISTS sp_get_patient_summary;
+DELIMITER $$
+CREATE PROCEDURE sp_get_patient_summary(
+    IN p_patient_id BIGINT
+)
+BEGIN
+    SELECT 
+        p.patient_id,
+        CONCAT(pe.first_name, ' ', pe.last_name) AS paciente,
+        pe.identification_number AS documento,
+        ch.history_number AS historia,
+        COUNT(DISTINCT mv.visit_id) AS total_consultas,
+        COUNT(DISTINCT gr.glaucoma_record_id) AS registros_glaucoma,
+        AVG(iop.pressure_value) AS pio_promedio
+    FROM patient p
+    INNER JOIN person pe ON pe.person_id = p.person_id
+    LEFT JOIN clinical_history ch ON ch.patient_id = p.patient_id
+    LEFT JOIN medical_visit mv ON mv.clinical_history_id = ch.clinical_history_id
+    LEFT JOIN glaucoma_record gr ON gr.patient_id = p.patient_id
+    LEFT JOIN intraocular_pressure iop ON iop.visit_id = mv.visit_id
+    WHERE p.patient_id = p_patient_id
+    GROUP BY p.patient_id, pe.first_name, pe.last_name, pe.identification_number, ch.history_number;
+END $$
+DELIMITER ;
+```
+
 ### 42.
 
 Crear un procedimiento que muestre la evolución de PIO de un paciente entre dos fechas.
+
+```sql
+DROP PROCEDURE IF EXISTS sp_get_pio_evolution;
+DELIMITER $$
+CREATE PROCEDURE sp_get_pio_evolution(
+    IN p_patient_id BIGINT,
+    IN p_start_date DATETIME,
+    IN p_end_date DATETIME
+)
+BEGIN
+    SELECT 
+        iop.measured_at,
+        e.code AS eye,
+        iop.pressure_value,
+        iop.method
+    FROM intraocular_pressure iop
+    INNER JOIN medical_visit mv ON mv.visit_id = iop.visit_id
+    INNER JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    INNER JOIN eye e ON e.eye_id = iop.eye_id
+    WHERE ch.patient_id = p_patient_id
+      AND iop.measured_at BETWEEN p_start_date AND p_end_date
+    ORDER BY iop.measured_at ASC;
+END $$
+DELIMITER ;
+```
 
 ### 43.
 
 Crear un procedimiento que reciba paciente y ojo y muestre todas sus mediciones cronológicamente.
 
+```sql
+DROP PROCEDURE IF EXISTS sp_get_patient_eye_pio;
+DELIMITER $$
+CREATE PROCEDURE sp_get_patient_eye_pio(
+    IN p_patient_id BIGINT,
+    IN p_eye_code VARCHAR(20)
+)
+BEGIN
+    SELECT 
+        iop.pressure_id,
+        iop.measured_at,
+        iop.pressure_value,
+        iop.method
+    FROM intraocular_pressure iop
+    INNER JOIN medical_visit mv ON mv.visit_id = iop.visit_id
+    INNER JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    INNER JOIN eye e ON e.eye_id = iop.eye_id
+    WHERE ch.patient_id = p_patient_id
+      AND e.code = p_eye_code
+    ORDER BY iop.measured_at ASC;
+END $$
+DELIMITER ;
+```
+
 ### 44.
 
 Crear un procedimiento que genere estadísticas mensuales de consultas.
+
+```sql
+DROP PROCEDURE IF EXISTS sp_get_monthly_visit_stats;
+DELIMITER $$
+CREATE PROCEDURE sp_get_monthly_visit_stats(
+    IN p_year INT
+)
+BEGIN
+    SELECT 
+        MONTH(visit_date) AS mes,
+        COUNT(*) AS total_consultas
+    FROM medical_visit
+    WHERE YEAR(visit_date) = p_year
+    GROUP BY MONTH(visit_date)
+    ORDER BY mes ASC;
+END $$
+DELIMITER ;
+```
 
 ### 45.
 
 Crear un procedimiento que calcule la cantidad de pacientes atendidos por cada especialista.
 
+```sql
+DROP PROCEDURE IF EXISTS sp_get_patients_per_specialist;
+DELIMITER $$
+CREATE PROCEDURE sp_get_patients_per_specialist()
+BEGIN
+    SELECT 
+        hp.professional_id,
+        CONCAT(pe.first_name, ' ', pe.last_name) AS profesional,
+        COUNT(DISTINCT ch.patient_id) AS total_pacientes
+    FROM healthcare_professional hp
+    INNER JOIN person pe ON pe.person_id = hp.person_id
+    LEFT JOIN medical_visit mv ON mv.professional_id = hp.professional_id
+    LEFT JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    GROUP BY hp.professional_id, pe.first_name, pe.last_name;
+END $$
+DELIMITER ;
+```
+
 ### 46.
 
 Crear un procedimiento que determine pacientes sin consulta durante un número de meses recibido como parámetro.
+
+```sql
+DROP PROCEDURE IF EXISTS sp_get_inactive_patients_months;
+DELIMITER $$
+CREATE PROCEDURE sp_get_inactive_patients_months(
+    IN p_months INT
+)
+BEGIN
+    SELECT 
+        p.patient_id,
+        CONCAT(pe.first_name, ' ', pe.last_name) AS paciente,
+        MAX(mv.visit_date) AS ultima_consulta
+    FROM patient p
+    INNER JOIN person pe ON pe.person_id = p.person_id
+    INNER JOIN clinical_history ch ON ch.patient_id = p.patient_id
+    LEFT JOIN medical_visit mv ON mv.clinical_history_id = ch.clinical_history_id
+    GROUP BY p.patient_id, pe.first_name, pe.last_name
+    HAVING MAX(mv.visit_date) < DATE_SUB(CURDATE(), INTERVAL p_months MONTH)
+        OR MAX(mv.visit_date) IS NULL;
+END $$
+DELIMITER ;
+```
 
 ### 47.
 
 Crear un procedimiento que genere un resumen de diagnósticos por paciente.
 
+```sql
+DROP PROCEDURE IF EXISTS sp_get_diagnoses_summary_by_patient;
+DELIMITER $$
+CREATE PROCEDURE sp_get_diagnoses_summary_by_patient(
+    IN p_patient_id BIGINT
+)
+BEGIN
+    SELECT 
+        d.code,
+        d.name AS diagnostico,
+        COUNT(*) AS frecuencia,
+        MAX(mv.visit_date) AS ultima_vez
+    FROM patient p
+    INNER JOIN clinical_history ch ON ch.patient_id = p.patient_id
+    INNER JOIN medical_visit mv ON mv.clinical_history_id = ch.clinical_history_id
+    INNER JOIN visit_diagnosis vd ON vd.visit_id = mv.visit_id
+    INNER JOIN diagnosis d ON d.diagnosis_id = vd.diagnosis_id
+    WHERE p.patient_id = p_patient_id
+    GROUP BY d.code, d.name;
+END $$
+DELIMITER ;
+```
+
 ### 48.
 
 Crear un procedimiento que devuelva el último OCT, último campo visual y última PIO de un paciente.
+
+```sql
+DROP PROCEDURE IF EXISTS sp_get_latest_exams_and_pio;
+DELIMITER $$
+CREATE PROCEDURE sp_get_latest_exams_and_pio(
+    IN p_patient_id BIGINT
+)
+BEGIN
+    SELECT 
+        (SELECT MAX(ce.exam_date) 
+         FROM clinical_exam ce 
+         JOIN exam_type et ON et.exam_type_id = ce.exam_type_id 
+         JOIN medical_visit mv ON mv.visit_id = ce.visit_id 
+         JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id 
+         WHERE ch.patient_id = p_patient_id AND et.name LIKE '%OCT%') AS ultimo_oct,
+         
+        (SELECT MAX(ce.exam_date) 
+         FROM clinical_exam ce 
+         JOIN exam_type et ON et.exam_type_id = ce.exam_type_id 
+         JOIN medical_visit mv ON mv.visit_id = ce.visit_id 
+         JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id 
+         WHERE ch.patient_id = p_patient_id AND (et.name LIKE '%Campo visual%' OR et.name LIKE '%Campimetría%')) AS ultimo_campo_visual,
+         
+        (SELECT MAX(iop.measured_at) 
+         FROM intraocular_pressure iop 
+         JOIN medical_visit mv ON mv.visit_id = iop.visit_id 
+         JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id 
+         WHERE ch.patient_id = p_patient_id) AS ultima_pio;
+END $$
+DELIMITER ;
+```
 
 ### 49.
 
 Crear un procedimiento que registre en una sola transacción una consulta, un diagnóstico y una medición de PIO.
 
+```sql
+DROP PROCEDURE IF EXISTS sp_register_visit_diag_pio_tx;
+DELIMITER $$
+CREATE PROCEDURE sp_register_visit_diag_pio_tx(
+    IN p_clinical_history_id BIGINT,
+    IN p_professional_id BIGINT,
+    IN p_visit_type_id BIGINT,
+    IN p_reason TEXT,
+    IN p_diagnosis_id BIGINT,
+    IN p_eye_id BIGINT,
+    IN p_pressure_value DECIMAL(6,2)
+)
+BEGIN
+    DECLARE v_visit_id BIGINT;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+    INSERT INTO medical_visit (clinical_history_id, professional_id, visit_type_id, visit_date, reason)
+    VALUES (p_clinical_history_id, p_professional_id, p_visit_type_id, NOW(), p_reason);
+    SET v_visit_id = LAST_INSERT_ID();
+
+    INSERT INTO visit_diagnosis (visit_id, diagnosis_id, diagnosis_type)
+    VALUES (v_visit_id, p_diagnosis_id, 'Principal');
+
+    INSERT INTO intraocular_pressure (visit_id, eye_id, measured_at, pressure_value, unit)
+    VALUES (v_visit_id, p_eye_id, NOW(), p_pressure_value, 'mmHg');
+
+    COMMIT;
+END $$
+DELIMITER ;
+```
+
 ### 50.
 
-Crear un procedimiento transaccional que registre un control completo de glaucoma y ejecute `ROLLBACK` si alguna operación falla.
+Crear un procedimiento transaccional que registre un control completo de glaucoma y ejecute ROLLBACK si alguna operación falla.
+
+```sql
+DROP PROCEDURE IF EXISTS sp_register_full_glaucoma_control_tx;
+DELIMITER $$
+CREATE PROCEDURE sp_register_full_glaucoma_control_tx(
+    IN p_glaucoma_record_id BIGINT,
+    IN p_clinical_history_id BIGINT,
+    IN p_professional_id BIGINT,
+    IN p_visit_type_id BIGINT,
+    IN p_eye_id BIGINT,
+    IN p_pressure_value DECIMAL(6,2),
+    IN p_observations TEXT
+)
+BEGIN
+    DECLARE v_visit_id BIGINT;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+    INSERT INTO medical_visit (clinical_history_id, professional_id, visit_type_id, visit_date, reason)
+    VALUES (p_clinical_history_id, p_professional_id, p_visit_type_id, NOW(), 'Control Glaucoma');
+    SET v_visit_id = LAST_INSERT_ID();
+
+    INSERT INTO glaucoma_control (glaucoma_record_id, visit_id, control_date, observations)
+    VALUES (p_glaucoma_record_id, v_visit_id, CURDATE(), p_observations);
+
+    INSERT INTO intraocular_pressure (visit_id, eye_id, measured_at, pressure_value, unit)
+    VALUES (v_visit_id, p_eye_id, NOW(), p_pressure_value, 'mmHg');
+
+    COMMIT;
+END $$
+DELIMITER ;
+```
 
 # PARTE IV — 50 EJERCICIOS DE TRIGGERS
 
-## BEFORE INSERT
+## Before insert
 
 ### 1.
 
 Crear un trigger que elimine espacios externos de los nombres de pacientes antes de insertarlos.
 
+```sql
+DROP TRIGGER IF EXISTS trg_person_before_insert_trim;
+DELIMITER $$
+CREATE TRIGGER trg_person_before_insert_trim
+BEFORE INSERT ON person
+FOR EACH ROW
+BEGIN
+    SET NEW.first_name = TRIM(NEW.first_name);
+    IF NEW.middle_name IS NOT NULL THEN
+        SET NEW.middle_name = TRIM(NEW.middle_name);
+    END IF;
+    SET NEW.last_name = TRIM(NEW.last_name);
+    IF NEW.second_last_name IS NOT NULL THEN
+        SET NEW.second_last_name = TRIM(NEW.second_last_name);
+    END IF;
+END $$
+DELIMITER ;
+```
+
 ### 2.
 
 Convertir automáticamente el correo del paciente a minúsculas.
+
+```sql
+DROP TRIGGER IF EXISTS trg_person_before_insert_email_lower;
+DELIMITER $$
+CREATE TRIGGER trg_person_before_insert_email_lower
+BEFORE INSERT ON person
+FOR EACH ROW
+BEGIN
+    IF NEW.email IS NOT NULL THEN
+        SET NEW.email = LOWER(TRIM(NEW.email));
+    END IF;
+END $$
+DELIMITER ;
+```
 
 ### 3.
 
 Convertir el número de documento a mayúsculas cuando contenga caracteres.
 
+```sql
+DROP TRIGGER IF EXISTS trg_person_before_insert_doc_upper;
+DELIMITER $$
+CREATE TRIGGER trg_person_before_insert_doc_upper
+BEFORE INSERT ON person
+FOR EACH ROW
+BEGIN
+    IF NEW.identification_number IS NOT NULL THEN
+        SET NEW.identification_number = UPPER(TRIM(NEW.identification_number));
+    END IF;
+END $$
+DELIMITER ;
+```
+
 ### 4.
 
 Impedir registrar una fecha de nacimiento futura.
+
+```sql
+DROP TRIGGER IF EXISTS trg_person_before_insert_birthdate;
+DELIMITER $$
+CREATE TRIGGER trg_person_before_insert_birthdate
+BEFORE INSERT ON person
+FOR EACH ROW
+BEGIN
+    IF NEW.birth_date > CURDATE() THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La fecha de nacimiento no puede ser futura';
+    END IF;
+END $$
+DELIMITER ;
+```
 
 ### 5.
 
 Impedir registrar una presión intraocular negativa.
 
+```sql
+DROP TRIGGER IF EXISTS trg_iop_before_insert_negative;
+DELIMITER $$
+CREATE TRIGGER trg_iop_before_insert_negative
+BEFORE INSERT ON intraocular_pressure
+FOR EACH ROW
+BEGIN
+    IF NEW.pressure_value < 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La presión intraocular no puede ser negativa';
+    END IF;
+END $$
+DELIMITER ;
+```
+
 ### 6.
 
 Impedir registrar una PIO superior a un límite definido para datos plausibles.
 
+```sql
+DROP TRIGGER IF EXISTS trg_iop_before_insert_limit;
+DELIMITER $$
+CREATE TRIGGER trg_iop_before_insert_limit
+BEFORE INSERT ON intraocular_pressure
+FOR EACH ROW
+BEGIN
+    IF NEW.pressure_value > 80 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La presión intraocular supera el límite plausible (80 mmHg)';
+    END IF;
+END $$
+DELIMITER ;
+```
+
 ### 7.
 
-Validar que el campo `eye` solo admita `OD` u `OI`.
+Validar que el campo eye solo admita OD u OI.
+
+```sql
+DROP TRIGGER IF EXISTS trg_iop_before_insert_eye_check;
+DELIMITER $$
+CREATE TRIGGER trg_iop_before_insert_eye_check
+BEFORE INSERT ON intraocular_pressure
+FOR EACH ROW
+BEGIN
+    DECLARE v_eye_code VARCHAR(20);
+    SELECT code INTO v_eye_code FROM eye WHERE eye_id = NEW.eye_id;
+    IF v_eye_code NOT IN ('OD', 'OI', 'OS') THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El ojo solo permite OD u OI';
+    END IF;
+END $$
+DELIMITER ;
+```
 
 ### 8.
 
 Impedir que un tratamiento tenga fecha final anterior a la inicial.
 
+```sql
+DROP TRIGGER IF EXISTS trg_treatment_before_insert_dates;
+DELIMITER $$
+CREATE TRIGGER trg_treatment_before_insert_dates
+BEFORE INSERT ON treatment
+FOR EACH ROW
+BEGIN
+    IF NEW.end_date IS NOT NULL AND NEW.end_date < NEW.start_date THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La fecha final no puede ser anterior a la inicial';
+    END IF;
+END $$
+DELIMITER ;
+```
+
 ### 9.
 
 Validar que el VFI de un campo visual esté entre 0 y 100.
+
+```sql
+DROP TRIGGER IF EXISTS trg_exam_result_before_insert_vfi;
+DELIMITER $$
+CREATE TRIGGER trg_exam_result_before_insert_vfi
+BEFORE INSERT ON exam_result
+FOR EACH ROW
+BEGIN
+    DECLARE v_exam_type_name VARCHAR(150);
+    SELECT et.name INTO v_exam_type_name
+    FROM clinical_exam ce
+    JOIN exam_type et ON et.exam_type_id = ce.exam_type_id
+    WHERE ce.clinical_exam_id = NEW.clinical_exam_id;
+
+    IF (v_exam_type_name LIKE '%Campo visual%' OR v_exam_type_name LIKE '%Campimetría%') THEN
+        IF NEW.value_numeric < 0 OR NEW.value_numeric > 100 THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El valor VFI debe estar entre 0 y 100';
+        END IF;
+    END IF;
+END $$
+DELIMITER ;
+```
 
 ### 10.
 
 Validar que la paquimetría sea mayor que cero.
 
-## AFTER INSERT
+```sql
+DROP TRIGGER IF EXISTS trg_exam_result_before_insert_pachymetry;
+DELIMITER $$
+CREATE TRIGGER trg_exam_result_before_insert_pachymetry
+BEFORE INSERT ON exam_result
+FOR EACH ROW
+BEGIN
+    DECLARE v_exam_type_name VARCHAR(150);
+    SELECT et.name INTO v_exam_type_name
+    FROM clinical_exam ce
+    JOIN exam_type et ON et.exam_type_id = ce.exam_type_id
+    WHERE ce.clinical_exam_id = NEW.clinical_exam_id;
+
+    IF v_exam_type_name LIKE '%Paquimetría%' THEN
+        IF NEW.value_numeric <= 0 THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La paquimetría debe ser mayor a cero';
+        END IF;
+    END IF;
+END $$
+DELIMITER ;
+```
+
+## After insert
 
 ### 11.
 
 Registrar en auditoría la creación de un nuevo paciente.
 
+```sql
+DROP TRIGGER IF EXISTS trg_patient_after_insert_audit;
+DELIMITER $$
+CREATE TRIGGER trg_patient_after_insert_audit
+AFTER INSERT ON patient
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (user_id, action, table_name, record_id, new_values)
+    VALUES (1, 'INSERT', 'patient', NEW.patient_id, CONCAT('Nuevo paciente ID: ', NEW.patient_id));
+END $$
+DELIMITER ;
+```
+
 ### 12.
 
 Registrar en auditoría la creación de una historia clínica.
+
+```sql
+DROP TRIGGER IF EXISTS trg_history_after_insert_audit;
+DELIMITER $$
+CREATE TRIGGER trg_history_after_insert_audit
+AFTER INSERT ON clinical_history
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (user_id, action, table_name, record_id, new_values)
+    VALUES (1, 'INSERT', 'clinical_history', NEW.clinical_history_id, CONCAT('Número: ', NEW.history_number));
+END $$
+DELIMITER ;
+```
 
 ### 13.
 
 Registrar automáticamente en auditoría cada nueva consulta.
 
+```sql
+DROP TRIGGER IF EXISTS trg_visit_after_insert_audit;
+DELIMITER $$
+CREATE TRIGGER trg_visit_after_insert_audit
+AFTER INSERT ON medical_visit
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (user_id, action, table_name, record_id, new_values)
+    VALUES (1, 'INSERT', 'medical_visit', NEW.visit_id, CONCAT('Consulta fecha: ', NEW.visit_date));
+END $$
+DELIMITER ;
+```
+
 ### 14.
 
 Registrar cada nuevo diagnóstico asociado a una consulta.
+
+```sql
+DROP TRIGGER IF EXISTS trg_visit_diag_after_insert_audit;
+DELIMITER $$
+CREATE TRIGGER trg_visit_diag_after_insert_audit
+AFTER INSERT ON visit_diagnosis
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (user_id, action, table_name, record_id, new_values)
+    VALUES (1, 'INSERT', 'visit_diagnosis', NEW.visit_id, CONCAT('Diag ID: ', NEW.diagnosis_id));
+END $$
+DELIMITER ;
+```
 
 ### 15.
 
 Registrar cada nueva medición de presión intraocular.
 
+```sql
+DROP TRIGGER IF EXISTS trg_iop_after_insert_audit;
+DELIMITER $$
+CREATE TRIGGER trg_iop_after_insert_audit
+AFTER INSERT ON intraocular_pressure
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (user_id, action, table_name, record_id, new_values)
+    VALUES (1, 'INSERT', 'intraocular_pressure', NEW.pressure_id, CONCAT('Valor: ', NEW.pressure_value));
+END $$
+DELIMITER ;
+```
+
 ### 16.
 
 Registrar cada nuevo tratamiento.
+
+```sql
+DROP TRIGGER IF EXISTS trg_treatment_after_insert_audit;
+DELIMITER $$
+CREATE TRIGGER trg_treatment_after_insert_audit
+AFTER INSERT ON treatment
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (user_id, action, table_name, record_id, new_values)
+    VALUES (1, 'INSERT', 'treatment', NEW.treatment_id, CONCAT('Tratamiento inicio: ', NEW.start_date));
+END $$
+DELIMITER ;
+```
 
 ### 17.
 
 Registrar cada nuevo procedimiento.
 
+```sql
+DROP TRIGGER IF EXISTS trg_procedure_after_insert_audit;
+DELIMITER $$
+CREATE TRIGGER trg_procedure_after_insert_audit
+AFTER INSERT ON visit_procedure
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (user_id, action, table_name, record_id, new_values)
+    VALUES (1, 'INSERT', 'visit_procedure', NEW.visit_procedure_id, CONCAT('Proc ID: ', NEW.procedure_id));
+END $$
+DELIMITER ;
+```
+
 ### 18.
 
 Registrar en auditoría cada nuevo estudio OCT.
+
+```sql
+DROP TRIGGER IF EXISTS trg_oct_after_insert_audit;
+DELIMITER $$
+CREATE TRIGGER trg_oct_after_insert_audit
+AFTER INSERT ON clinical_exam
+FOR EACH ROW
+BEGIN
+    DECLARE v_exam_type_name VARCHAR(150);
+    SELECT name INTO v_exam_type_name FROM exam_type WHERE exam_type_id = NEW.exam_type_id;
+    IF v_exam_type_name LIKE '%OCT%' THEN
+        INSERT INTO audit_log (user_id, action, table_name, record_id, new_values)
+        VALUES (1, 'INSERT', 'clinical_exam_oct', NEW.clinical_exam_id, 'Nuevo examen OCT');
+    END IF;
+END $$
+DELIMITER ;
+```
 
 ### 19.
 
 Registrar cada campo visual creado.
 
+```sql
+DROP TRIGGER IF EXISTS trg_visual_field_after_insert_audit;
+DELIMITER $$
+CREATE TRIGGER trg_visual_field_after_insert_audit
+AFTER INSERT ON clinical_exam
+FOR EACH ROW
+BEGIN
+    DECLARE v_exam_type_name VARCHAR(150);
+    SELECT name INTO v_exam_type_name FROM exam_type WHERE exam_type_id = NEW.exam_type_id;
+    IF v_exam_type_name LIKE '%Campo visual%' OR v_exam_type_name LIKE '%Campimetría%' THEN
+        INSERT INTO audit_log (user_id, action, table_name, record_id, new_values)
+        VALUES (1, 'INSERT', 'clinical_exam_vf', NEW.clinical_exam_id, 'Nuevo Campo Visual');
+    END IF;
+END $$
+DELIMITER ;
+```
+
 ### 20.
 
 Crear una notificación interna cuando se registre una PIO mayor que un valor determinado.
 
-## BEFORE UPDATE
+```sql
+DROP TRIGGER IF EXISTS trg_iop_high_alert;
+DELIMITER $$
+CREATE TRIGGER trg_iop_high_alert
+AFTER INSERT ON intraocular_pressure
+FOR EACH ROW
+BEGIN
+    DECLARE v_patient_id BIGINT;
+    IF NEW.pressure_value > 21 THEN
+        SELECT ch.patient_id INTO v_patient_id
+        FROM medical_visit mv
+        JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+        WHERE mv.visit_id = NEW.visit_id;
+
+        INSERT INTO alert (patient_id, created_by, visit_id, title, message, alert_type)
+        VALUES (v_patient_id, 1, NEW.visit_id, 'PIO ELEVADA', CONCAT('Presión intraocular elevada: ', NEW.pressure_value, ' mmHg'), 'ALERTA');
+    END IF;
+END $$
+DELIMITER ;
+```
+
+## Before update
 
 ### 21.
 
-Actualizar automáticamente `updated_at` antes de modificar un paciente.
+Actualizar automáticamente updated_at antes de modificar un paciente.
+
+```sql
+DROP TRIGGER IF EXISTS trg_ch_before_update_timestamp;
+DELIMITER $$
+CREATE TRIGGER trg_ch_before_update_timestamp
+BEFORE UPDATE ON clinical_history
+FOR EACH ROW
+BEGIN
+    SET NEW.updated_at = NOW();
+END $$
+DELIMITER ;
+```
 
 ### 22.
 
-Actualizar `updated_at` antes de modificar una consulta.
+Actualizar updated_at antes de modificar una consulta.
+
+```sql
+DROP TRIGGER IF EXISTS trg_visit_before_update_timestamp;
+DELIMITER $$
+CREATE TRIGGER trg_visit_before_update_timestamp
+BEFORE UPDATE ON medical_visit
+FOR EACH ROW
+BEGIN
+    SET NEW.visit_date = NEW.visit_date;
+END $$
+DELIMITER ;
+```
 
 ### 23.
 
 Impedir modificar el número de documento una vez creada la historia clínica.
 
+```sql
+DROP TRIGGER IF EXISTS trg_person_before_update_doc;
+DELIMITER $$
+CREATE TRIGGER trg_person_before_update_doc
+BEFORE UPDATE ON person
+FOR EACH ROW
+BEGIN
+    IF OLD.identification_number <> NEW.identification_number THEN
+        IF EXISTS (
+            SELECT 1 FROM patient p
+            JOIN clinical_history ch ON ch.patient_id = p.patient_id
+            WHERE p.person_id = OLD.person_id
+        ) THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se puede modificar el documento de un paciente con historia clínica';
+        END IF;
+    END IF;
+END $$
+DELIMITER ;
+```
+
 ### 24.
 
 Impedir asignar una fecha de consulta futura no permitida.
+
+```sql
+DROP TRIGGER IF EXISTS trg_visit_before_update_date;
+DELIMITER $$
+CREATE TRIGGER trg_visit_before_update_date
+BEFORE UPDATE ON medical_visit
+FOR EACH ROW
+BEGIN
+    IF NEW.visit_date > NOW() THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se permiten fechas futuras para consultas';
+    END IF;
+END $$
+DELIMITER ;
+```
 
 ### 25.
 
 Validar que una nueva presión objetivo sea positiva.
 
+```sql
+DROP TRIGGER IF EXISTS trg_glaucoma_before_update_target;
+DELIMITER $$
+CREATE TRIGGER trg_glaucoma_before_update_target
+BEFORE UPDATE ON glaucoma_record
+FOR EACH ROW
+BEGIN
+    IF NEW.observations LIKE '%objetivo:%' AND NEW.observations LIKE '%-%' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La presión objetivo debe ser positiva';
+    END IF;
+END $$
+DELIMITER ;
+```
+
 ### 26.
 
 Impedir establecer una fecha final de tratamiento anterior a su inicio.
+
+```sql
+DROP TRIGGER IF EXISTS trg_treatment_before_update_dates;
+DELIMITER $$
+CREATE TRIGGER trg_treatment_before_update_dates
+BEFORE UPDATE ON treatment
+FOR EACH ROW
+BEGIN
+    IF NEW.end_date IS NOT NULL AND NEW.end_date < NEW.start_date THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La fecha final no puede ser anterior al inicio';
+    END IF;
+END $$
+DELIMITER ;
+```
 
 ### 27.
 
 Evitar modificar un examen OCT que haya sido marcado como validado.
 
+```sql
+DROP TRIGGER IF EXISTS trg_exam_before_update_validated;
+DELIMITER $$
+CREATE TRIGGER trg_exam_before_update_validated
+BEFORE UPDATE ON clinical_exam
+FOR EACH ROW
+BEGIN
+    IF OLD.observations LIKE '%VALIDADO%' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se puede modificar un examen marcado como VALIDADO';
+    END IF;
+END $$
+DELIMITER ;
+```
+
 ### 28.
 
 Evitar modificar una consulta marcada como cerrada.
+
+```sql
+DROP TRIGGER IF EXISTS trg_visit_before_update_closed;
+DELIMITER $$
+CREATE TRIGGER trg_visit_before_update_closed
+BEFORE UPDATE ON medical_visit
+FOR EACH ROW
+BEGIN
+    IF OLD.observations LIKE '%CERRADA%' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se puede modificar una consulta cerrada';
+    END IF;
+END $$
+DELIMITER ;
+```
 
 ### 29.
 
 Validar valores del campo visual antes de una actualización.
 
+```sql
+DROP TRIGGER IF EXISTS trg_exam_result_before_update_vf;
+DELIMITER $$
+CREATE TRIGGER trg_exam_result_before_update_vf
+BEFORE UPDATE ON exam_result
+FOR EACH ROW
+BEGIN
+    IF NEW.value_numeric < 0 OR NEW.value_numeric > 100 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El valor del examen no es válido';
+    END IF;
+END $$
+DELIMITER ;
+```
+
 ### 30.
 
 Normalizar observaciones eliminando espacios innecesarios antes de actualizar.
 
-## AFTER UPDATE
+```sql
+DROP TRIGGER IF EXISTS trg_visit_before_update_trim_obs;
+DELIMITER $$
+CREATE TRIGGER trg_visit_before_update_trim_obs
+BEFORE UPDATE ON medical_visit
+FOR EACH ROW
+BEGIN
+    IF NEW.observations IS NOT NULL THEN
+        SET NEW.observations = TRIM(NEW.observations);
+    END IF;
+END $$
+DELIMITER ;
+```
+
+## After update
 
 ### 31.
 
 Registrar cambios de datos personales del paciente.
 
+```sql
+DROP TRIGGER IF EXISTS trg_person_after_update_audit;
+DELIMITER $$
+CREATE TRIGGER trg_person_after_update_audit
+AFTER UPDATE ON person
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (user_id, action, table_name, record_id, old_values, new_values)
+    VALUES (1, 'UPDATE', 'person', NEW.person_id,
+            CONCAT('Tel: ', OLD.phone, ' Email: ', OLD.email),
+            CONCAT('Tel: ', NEW.phone, ' Email: ', NEW.email));
+END $$
+DELIMITER ;
+```
+
 ### 32.
 
 Guardar valor anterior y nuevo del correo del paciente.
+
+```sql
+DROP TRIGGER IF EXISTS trg_person_after_update_email;
+DELIMITER $$
+CREATE TRIGGER trg_person_after_update_email
+AFTER UPDATE ON person
+FOR EACH ROW
+BEGIN
+    IF OLD.email <> NEW.email OR (OLD.email IS NULL AND NEW.email IS NOT NULL) THEN
+        INSERT INTO audit_log (user_id, action, table_name, record_id, old_values, new_values)
+        VALUES (1, 'UPDATE_EMAIL', 'person', NEW.person_id, OLD.email, NEW.email);
+    END IF;
+END $$
+DELIMITER ;
+```
 
 ### 33.
 
 Registrar cambios en la presión objetivo.
 
+```sql
+DROP TRIGGER IF EXISTS trg_glaucoma_after_update_target;
+DELIMITER $$
+CREATE TRIGGER trg_glaucoma_after_update_target
+AFTER UPDATE ON glaucoma_record
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (user_id, action, table_name, record_id, old_values, new_values)
+    VALUES (1, 'UPDATE_GLAUCOMA', 'glaucoma_record', NEW.glaucoma_record_id, OLD.observations, NEW.observations);
+END $$
+DELIMITER ;
+```
+
 ### 34.
 
 Auditar cambios en el estado del glaucoma.
+
+```sql
+DROP TRIGGER IF EXISTS trg_glaucoma_after_update_status;
+DELIMITER $$
+CREATE TRIGGER trg_glaucoma_after_update_status
+AFTER UPDATE ON glaucoma_record
+FOR EACH ROW
+BEGIN
+    IF OLD.active <> NEW.active THEN
+        INSERT INTO audit_log (user_id, action, table_name, record_id, old_values, new_values)
+        VALUES (1, 'UPDATE_STATUS', 'glaucoma_record', NEW.glaucoma_record_id, CONCAT('Active: ', OLD.active), CONCAT('Active: ', NEW.active));
+    END IF;
+END $$
+DELIMITER ;
+```
 
 ### 35.
 
 Registrar cambios en tratamientos.
 
+```sql
+DROP TRIGGER IF EXISTS trg_treatment_after_update_audit;
+DELIMITER $$
+CREATE TRIGGER trg_treatment_after_update_audit
+AFTER UPDATE ON treatment
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (user_id, action, table_name, record_id, old_values, new_values)
+    VALUES (1, 'UPDATE', 'treatment', NEW.treatment_id, OLD.description, NEW.description);
+END $$
+DELIMITER ;
+```
+
 ### 36.
 
 Registrar cambios en diagnósticos.
+
+```sql
+DROP TRIGGER IF EXISTS trg_diagnosis_after_update_audit;
+DELIMITER $$
+CREATE TRIGGER trg_diagnosis_after_update_audit
+AFTER UPDATE ON diagnosis
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (user_id, action, table_name, record_id, old_values, new_values)
+    VALUES (1, 'UPDATE', 'diagnosis', NEW.diagnosis_id, OLD.name, NEW.name);
+END $$
+DELIMITER ;
+```
 
 ### 37.
 
 Registrar cambios de interpretación de OCT.
 
+```sql
+DROP TRIGGER IF EXISTS trg_oct_after_update_interp;
+DELIMITER $$
+CREATE TRIGGER trg_oct_after_update_interp
+AFTER UPDATE ON clinical_exam
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (user_id, action, table_name, record_id, old_values, new_values)
+    VALUES (1, 'UPDATE_OCT', 'clinical_exam', NEW.clinical_exam_id, OLD.observations, NEW.observations);
+END $$
+DELIMITER ;
+```
+
 ### 38.
 
 Registrar modificaciones de campos visuales.
+
+```sql
+DROP TRIGGER IF EXISTS trg_vf_after_update_audit;
+DELIMITER $$
+CREATE TRIGGER trg_vf_after_update_audit
+AFTER UPDATE ON exam_result
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (user_id, action, table_name, record_id, old_values, new_values)
+    VALUES (1, 'UPDATE_RESULT', 'exam_result', NEW.clinical_exam_id,
+            CONCAT('Old: ', OLD.value_numeric), CONCAT('New: ', NEW.value_numeric));
+END $$
+DELIMITER ;
+```
 
 ### 39.
 
 Generar una alerta cuando una PIO sea actualizada a un valor superior al objetivo.
 
+```sql
+DROP TRIGGER IF EXISTS trg_iop_after_update_alert;
+DELIMITER $$
+CREATE TRIGGER trg_iop_after_update_alert
+AFTER UPDATE ON intraocular_pressure
+FOR EACH ROW
+BEGIN
+    IF NEW.pressure_value > 21 THEN
+        INSERT INTO audit_log (user_id, action, table_name, record_id, new_values)
+        VALUES (1, 'ALERTA_PIO_UPDATE', 'intraocular_pressure', NEW.pressure_id, CONCAT('PIO actualizada superior al objetivo: ', NEW.pressure_value));
+    END IF;
+END $$
+DELIMITER ;
+```
+
 ### 40.
 
 Registrar cuándo un tratamiento cambia de activo a finalizado.
 
-## DELETE y auditoría
+```sql
+DROP TRIGGER IF EXISTS trg_treatment_after_update_status;
+DELIMITER $$
+CREATE TRIGGER trg_treatment_after_update_status
+AFTER UPDATE ON treatment
+FOR EACH ROW
+BEGIN
+    IF OLD.treatment_status_id <> NEW.treatment_status_id THEN
+        INSERT INTO audit_log (user_id, action, table_name, record_id, old_values, new_values)
+        VALUES (1, 'STATUS_CHANGE', 'treatment', NEW.treatment_id,
+                CONCAT('Old Status: ', OLD.treatment_status_id),
+                CONCAT('New Status: ', NEW.treatment_status_id));
+    END IF;
+END $$
+DELIMITER ;
+```
+
+## Delete y auditoría
 
 ### 41.
 
 Guardar una copia de un paciente antes de eliminarlo.
 
+```sql
+DROP TRIGGER IF EXISTS trg_patient_before_delete_copy;
+DELIMITER $$
+CREATE TRIGGER trg_patient_before_delete_copy
+BEFORE DELETE ON patient
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (user_id, action, table_name, record_id, old_values)
+    VALUES (1, 'DELETE', 'patient', OLD.patient_id, CONCAT('Person ID: ', OLD.person_id));
+END $$
+DELIMITER ;
+```
+
 ### 42.
 
 Guardar una copia de una consulta eliminada.
+
+```sql
+DROP TRIGGER IF EXISTS trg_visit_before_delete_copy;
+DELIMITER $$
+CREATE TRIGGER trg_visit_before_delete_copy
+BEFORE DELETE ON medical_visit
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (user_id, action, table_name, record_id, old_values)
+    VALUES (1, 'DELETE', 'medical_visit', OLD.visit_id, CONCAT('Fecha: ', OLD.visit_date, ' Motivo: ', OLD.reason));
+END $$
+DELIMITER ;
+```
 
 ### 43.
 
 Guardar un histórico de un tratamiento eliminado.
 
+```sql
+DROP TRIGGER IF EXISTS trg_treatment_before_delete_history;
+DELIMITER $$
+CREATE TRIGGER trg_treatment_before_delete_history
+BEFORE DELETE ON treatment
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (user_id, action, table_name, record_id, old_values)
+    VALUES (1, 'DELETE', 'treatment', OLD.treatment_id, CONCAT('Desc: ', OLD.description));
+END $$
+DELIMITER ;
+```
+
 ### 44.
 
 Registrar en auditoría la eliminación de un diagnóstico.
+
+```sql
+DROP TRIGGER IF EXISTS trg_diagnosis_before_delete_audit;
+DELIMITER $$
+CREATE TRIGGER trg_diagnosis_before_delete_audit
+BEFORE DELETE ON diagnosis
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (user_id, action, table_name, record_id, old_values)
+    VALUES (1, 'DELETE', 'diagnosis', OLD.diagnosis_id, CONCAT('Code: ', OLD.code, ' Name: ', OLD.name));
+END $$
+DELIMITER ;
+```
 
 ### 45.
 
 Impedir eliminar pacientes que tengan historia clínica.
 
+```sql
+DROP TRIGGER IF EXISTS trg_patient_before_delete_check;
+DELIMITER $$
+CREATE TRIGGER trg_patient_before_delete_check
+BEFORE DELETE ON patient
+FOR EACH ROW
+BEGIN
+    IF EXISTS (SELECT 1 FROM clinical_history WHERE patient_id = OLD.patient_id) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se puede eliminar un paciente que posee historia clínica';
+    END IF;
+END $$
+DELIMITER ;
+```
+
 ### 46.
 
 Impedir eliminar profesionales con consultas registradas.
+
+```sql
+DROP TRIGGER IF EXISTS trg_prof_before_delete_check;
+DELIMITER $$
+CREATE TRIGGER trg_prof_before_delete_check
+BEFORE DELETE ON healthcare_professional
+FOR EACH ROW
+BEGIN
+    IF EXISTS (SELECT 1 FROM medical_visit WHERE professional_id = OLD.professional_id) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se puede eliminar un profesional con consultas asociadas';
+    END IF;
+END $$
+DELIMITER ;
+```
 
 ### 47.
 
 Impedir eliminar medicamentos actualmente utilizados en tratamientos activos.
 
+```sql
+DROP TRIGGER IF EXISTS trg_medication_before_delete_check;
+DELIMITER $$
+CREATE TRIGGER trg_medication_before_delete_check
+BEFORE DELETE ON medication
+FOR EACH ROW
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM treatment_medication tm
+        JOIN treatment t ON t.treatment_id = tm.treatment_id
+        JOIN treatment_status ts ON ts.treatment_status_id = t.treatment_status_id
+        WHERE tm.medication_id = OLD.medication_id AND ts.name = 'Activo'
+    ) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se puede eliminar un medicamento asociado a un tratamiento activo';
+    END IF;
+END $$
+DELIMITER ;
+```
+
 ### 48.
 
 Registrar automáticamente la eliminación de un examen OCT.
+
+```sql
+DROP TRIGGER IF EXISTS trg_oct_before_delete_audit;
+DELIMITER $$
+CREATE TRIGGER trg_oct_before_delete_audit
+BEFORE DELETE ON clinical_exam
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (user_id, action, table_name, record_id, old_values)
+    VALUES (1, 'DELETE', 'clinical_exam', OLD.clinical_exam_id, CONCAT('Examen eliminado fecha: ', OLD.exam_date));
+END $$
+DELIMITER ;
+```
 
 ### 49.
 
 Registrar quién eliminó un documento clínico.
 
+```sql
+DROP TRIGGER IF EXISTS trg_document_before_delete_audit;
+DELIMITER $$
+CREATE TRIGGER trg_document_before_delete_audit
+BEFORE DELETE ON clinical_document
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (user_id, action, table_name, record_id, old_values)
+    VALUES (1, 'DELETE_DOC', 'clinical_document', OLD.document_id, CONCAT('Documento: ', OLD.file_name));
+END $$
+DELIMITER ;
+```
+
 ### 50.
 
-Implementar un esquema completo de auditoría mediante triggers para `INSERT`, `UPDATE` y `DELETE` sobre la tabla `patients`.
+Implementar un esquema completo de auditoría mediante triggers para INSERT, UPDATE y DELETE sobre la tabla patients.
+
+```sql
+DROP TRIGGER IF EXISTS trg_patient_audit_insert;
+DELIMITER $$
+CREATE TRIGGER trg_patient_audit_insert
+AFTER INSERT ON patient
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (user_id, action, table_name, record_id, new_values)
+    VALUES (1, 'INSERT', 'patient', NEW.patient_id, CONCAT('Ingreso: ', NEW.admission_date));
+END $$
+DELIMITER ;
+
+DROP TRIGGER IF EXISTS trg_patient_audit_update;
+DELIMITER $$
+CREATE TRIGGER trg_patient_audit_update
+AFTER UPDATE ON patient
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (user_id, action, table_name, record_id, old_values, new_values)
+    VALUES (1, 'UPDATE', 'patient', NEW.patient_id,
+            CONCAT('Active: ', OLD.active),
+            CONCAT('Active: ', NEW.active));
+END $$
+DELIMITER ;
+
+DROP TRIGGER IF EXISTS trg_patient_audit_delete;
+DELIMITER $$
+CREATE TRIGGER trg_patient_audit_delete
+BEFORE DELETE ON patient
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (user_id, action, table_name, record_id, old_values)
+    VALUES (1, 'DELETE', 'patient', OLD.patient_id, CONCAT('Person ID: ', OLD.person_id));
+END $$
+DELIMITER ;
+```
 
 # PARTE V — 50 EJERCICIOS DE FUNCIONES ALMACENADAS
 
@@ -5871,41 +8449,217 @@ Implementar un esquema completo de auditoría mediante triggers para `INSERT`, `
 
 Crear una función que calcule la edad de un paciente a partir de su fecha de nacimiento.
 
+```sql
+DROP FUNCTION IF EXISTS fn_calculate_age;
+DELIMITER $$
+CREATE FUNCTION fn_calculate_age(
+    p_birth_date DATE
+)
+RETURNS INT
+DETERMINISTIC
+BEGIN
+    IF p_birth_date IS NULL THEN
+        RETURN NULL;
+    END IF;
+    RETURN TIMESTAMPDIFF(YEAR, p_birth_date, CURDATE());
+END $$
+DELIMITER ;
+```
+
 ### 2.
 
 Crear una función que reciba nombres y apellidos y retorne el nombre completo.
+
+```sql
+DROP FUNCTION IF EXISTS fn_get_full_name;
+DELIMITER $$
+CREATE FUNCTION fn_get_full_name(
+    p_first_name VARCHAR(100),
+    p_middle_name VARCHAR(100),
+    p_last_name VARCHAR(100),
+    p_second_last_name VARCHAR(100)
+)
+RETURNS VARCHAR(400)
+DETERMINISTIC
+BEGIN
+    RETURN CONCAT(
+        p_first_name, ' ',
+        IFNULL(CONCAT(p_middle_name, ' '), ''),
+        p_last_name,
+        IFNULL(CONCAT(' ', p_second_last_name), '')
+    );
+END $$
+DELIMITER ;
+```
 
 ### 3.
 
 Crear una función que reciba un ID de paciente y retorne su número de documento.
 
+```sql
+DROP FUNCTION IF EXISTS fn_get_patient_document;
+DELIMITER $$
+CREATE FUNCTION fn_get_patient_document(
+    p_patient_id BIGINT
+)
+RETURNS VARCHAR(50)
+READS SQL DATA
+BEGIN
+    DECLARE v_doc VARCHAR(50);
+    SELECT pe.identification_number INTO v_doc
+    FROM patient pa
+    JOIN person pe ON pe.person_id = pa.person_id
+    WHERE pa.patient_id = p_patient_id;
+    RETURN v_doc;
+END $$
+DELIMITER ;
+```
+
 ### 4.
 
 Crear una función que reciba un ID de paciente y retorne su edad.
+
+```sql
+DROP FUNCTION IF EXISTS fn_get_patient_age;
+DELIMITER $$
+CREATE FUNCTION fn_get_patient_age(
+    p_patient_id BIGINT
+)
+RETURNS INT
+READS SQL DATA
+BEGIN
+    DECLARE v_age INT;
+    SELECT TIMESTAMPDIFF(YEAR, pe.birth_date, CURDATE()) INTO v_age
+    FROM patient pa
+    JOIN person pe ON pe.person_id = pa.person_id
+    WHERE pa.patient_id = p_patient_id;
+    RETURN v_age;
+END $$
+DELIMITER ;
+```
 
 ### 5.
 
 Crear una función que reciba el ID de una consulta y retorne su fecha.
 
+```sql
+DROP FUNCTION IF EXISTS fn_get_visit_date;
+DELIMITER $$
+CREATE FUNCTION fn_get_visit_date(
+    p_visit_id BIGINT
+)
+RETURNS DATETIME
+READS SQL DATA
+BEGIN
+    DECLARE v_date DATETIME;
+    SELECT visit_date INTO v_date FROM medical_visit WHERE visit_id = p_visit_id;
+    RETURN v_date;
+END $$
+DELIMITER ;
+```
+
 ### 6.
 
 Crear una función que determine cuántos años han pasado desde una fecha.
+
+```sql
+DROP FUNCTION IF EXISTS fn_years_since;
+DELIMITER $$
+CREATE FUNCTION fn_years_since(
+    p_date DATE
+)
+RETURNS INT
+DETERMINISTIC
+BEGIN
+    IF p_date IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN TIMESTAMPDIFF(YEAR, p_date, CURDATE());
+END $$
+DELIMITER ;
+```
 
 ### 7.
 
 Crear una función que reciba un valor de PIO y retorne un texto descriptivo.
 
+```sql
+DROP FUNCTION IF EXISTS fn_describe_pio;
+DELIMITER $$
+CREATE FUNCTION fn_describe_pio(
+    p_value DECIMAL(6,2)
+)
+RETURNS VARCHAR(50)
+DETERMINISTIC
+BEGIN
+    IF p_value IS NULL THEN RETURN 'Sin datos';
+    ELSEIF p_value < 10 THEN RETURN 'Hipotonía';
+    ELSEIF p_value <= 21 THEN RETURN 'Normal';
+    ELSE RETURN 'Elevada';
+    END IF;
+END $$
+DELIMITER ;
+```
+
 ### 8.
 
-Crear una función que reciba `OD` u `OI` y devuelva `Ojo derecho` u `Ojo izquierdo`.
+Crear una función que reciba OD u OI y devuelva Ojo derecho u Ojo izquierdo.
+
+```sql
+DROP FUNCTION IF EXISTS fn_get_eye_description;
+DELIMITER $$
+CREATE FUNCTION fn_get_eye_description(
+    p_code VARCHAR(20)
+)
+RETURNS VARCHAR(50)
+DETERMINISTIC
+BEGIN
+    IF p_code = 'OD' THEN RETURN 'Ojo derecho';
+    ELSEIF p_code IN ('OI', 'OS') THEN RETURN 'Ojo izquierdo';
+    ELSEIF p_code = 'OU' THEN RETURN 'Ambos ojos';
+    ELSE RETURN 'Desconocido';
+    END IF;
+END $$
+DELIMITER ;
+```
 
 ### 9.
 
-Crear una función que reciba un booleano y retorne `Activo` o `Inactivo`.
+Crear una función que reciba un booleano y retorne Activo o Inactivo.
+
+```sql
+DROP FUNCTION IF EXISTS fn_boolean_to_status;
+DELIMITER $$
+CREATE FUNCTION fn_boolean_to_status(
+    p_active BOOLEAN
+)
+RETURNS VARCHAR(20)
+DETERMINISTIC
+BEGIN
+    IF p_active IS TRUE THEN RETURN 'Activo';
+    ELSE RETURN 'Inactivo';
+    END IF;
+END $$
+DELIMITER ;
+```
 
 ### 10.
 
 Crear una función que formatee un número de historia clínica.
+
+```sql
+DROP FUNCTION IF EXISTS fn_format_history_number;
+DELIMITER $$
+CREATE FUNCTION fn_format_history_number(
+    p_number INT
+)
+RETURNS VARCHAR(50)
+DETERMINISTIC
+BEGIN
+    RETURN CONCAT('HC-', LPAD(p_number, 6, '0'));
+END $$
+DELIMITER ;
+```
 
 ## Funciones con consultas
 
@@ -5913,41 +8667,239 @@ Crear una función que formatee un número de historia clínica.
 
 Crear una función que retorne la cantidad de consultas de un paciente.
 
+```sql
+DROP FUNCTION IF EXISTS fn_count_patient_visits;
+DELIMITER $$
+CREATE FUNCTION fn_count_patient_visits(
+    p_patient_id BIGINT
+)
+RETURNS INT
+READS SQL DATA
+BEGIN
+    DECLARE v_count INT;
+    SELECT COUNT(mv.visit_id) INTO v_count
+    FROM medical_visit mv
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id;
+    RETURN IFNULL(v_count, 0);
+END $$
+DELIMITER ;
+```
+
 ### 12.
 
 Crear una función que retorne la cantidad de diagnósticos de un paciente.
+
+```sql
+DROP FUNCTION IF EXISTS fn_count_patient_diagnoses;
+DELIMITER $$
+CREATE FUNCTION fn_count_patient_diagnoses(
+    p_patient_id BIGINT
+)
+RETURNS INT
+READS SQL DATA
+BEGIN
+    DECLARE v_count INT;
+    SELECT COUNT(vd.diagnosis_id) INTO v_count
+    FROM visit_diagnosis vd
+    JOIN medical_visit mv ON mv.visit_id = vd.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id;
+    RETURN IFNULL(v_count, 0);
+END $$
+DELIMITER ;
+```
 
 ### 13.
 
 Crear una función que retorne la cantidad de controles de glaucoma de un paciente.
 
+```sql
+DROP FUNCTION IF EXISTS fn_count_glaucoma_controls;
+DELIMITER $$
+CREATE FUNCTION fn_count_glaucoma_controls(
+    p_patient_id BIGINT
+)
+RETURNS INT
+READS SQL DATA
+BEGIN
+    DECLARE v_count INT;
+    SELECT COUNT(gc.glaucoma_control_id) INTO v_count
+    FROM glaucoma_control gc
+    JOIN glaucoma_record gr ON gr.glaucoma_record_id = gc.glaucoma_record_id
+    WHERE gr.patient_id = p_patient_id;
+    RETURN IFNULL(v_count, 0);
+END $$
+DELIMITER ;
+```
+
 ### 14.
 
 Crear una función que retorne la última fecha de consulta.
+
+```sql
+DROP FUNCTION IF EXISTS fn_get_last_visit_date;
+DELIMITER $$
+CREATE FUNCTION fn_get_last_visit_date(
+    p_patient_id BIGINT
+)
+RETURNS DATETIME
+READS SQL DATA
+BEGIN
+    DECLARE v_date DATETIME;
+    SELECT MAX(mv.visit_date) INTO v_date
+    FROM medical_visit mv
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id;
+    RETURN v_date;
+END $$
+DELIMITER ;
+```
 
 ### 15.
 
 Crear una función que retorne la primera fecha de consulta.
 
+```sql
+DROP FUNCTION IF EXISTS fn_get_first_visit_date;
+DELIMITER $$
+CREATE FUNCTION fn_get_first_visit_date(
+    p_patient_id BIGINT
+)
+RETURNS DATETIME
+READS SQL DATA
+BEGIN
+    DECLARE v_date DATETIME;
+    SELECT MIN(mv.visit_date) INTO v_date
+    FROM medical_visit mv
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id;
+    RETURN v_date;
+END $$
+DELIMITER ;
+```
+
 ### 16.
 
 Crear una función que retorne la presión intraocular promedio de un paciente.
+
+```sql
+DROP FUNCTION IF EXISTS fn_get_avg_pio;
+DELIMITER $$
+CREATE FUNCTION fn_get_avg_pio(
+    p_patient_id BIGINT
+)
+RETURNS DECIMAL(6,2)
+READS SQL DATA
+BEGIN
+    DECLARE v_avg DECIMAL(6,2);
+    SELECT AVG(iop.pressure_value) INTO v_avg
+    FROM intraocular_pressure iop
+    JOIN medical_visit mv ON mv.visit_id = iop.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id;
+    RETURN v_avg;
+END $$
+DELIMITER ;
+```
 
 ### 17.
 
 Crear una función que retorne la presión promedio de OD.
 
+```sql
+DROP FUNCTION IF EXISTS fn_get_avg_pio_od;
+DELIMITER $$
+CREATE FUNCTION fn_get_avg_pio_od(
+    p_patient_id BIGINT
+)
+RETURNS DECIMAL(6,2)
+READS SQL DATA
+BEGIN
+    DECLARE v_avg DECIMAL(6,2);
+    SELECT AVG(iop.pressure_value) INTO v_avg
+    FROM intraocular_pressure iop
+    JOIN medical_visit mv ON mv.visit_id = iop.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    JOIN eye e ON e.eye_id = iop.eye_id
+    WHERE ch.patient_id = p_patient_id AND e.code = 'OD';
+    RETURN v_avg;
+END $$
+DELIMITER ;
+```
+
 ### 18.
 
 Crear una función que retorne la presión promedio de OI.
+
+```sql
+DROP FUNCTION IF EXISTS fn_get_avg_pio_oi;
+DELIMITER $$
+CREATE FUNCTION fn_get_avg_pio_oi(
+    p_patient_id BIGINT
+)
+RETURNS DECIMAL(6,2)
+READS SQL DATA
+BEGIN
+    DECLARE v_avg DECIMAL(6,2);
+    SELECT AVG(iop.pressure_value) INTO v_avg
+    FROM intraocular_pressure iop
+    JOIN medical_visit mv ON mv.visit_id = iop.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    JOIN eye e ON e.eye_id = iop.eye_id
+    WHERE ch.patient_id = p_patient_id AND e.code IN ('OI', 'OS');
+    RETURN v_avg;
+END $$
+DELIMITER ;
+```
 
 ### 19.
 
 Crear una función que retorne la PIO máxima registrada para un paciente.
 
+```sql
+DROP FUNCTION IF EXISTS fn_get_max_pio;
+DELIMITER $$
+CREATE FUNCTION fn_get_max_pio(
+    p_patient_id BIGINT
+)
+RETURNS DECIMAL(6,2)
+READS SQL DATA
+BEGIN
+    DECLARE v_max DECIMAL(6,2);
+    SELECT MAX(iop.pressure_value) INTO v_max
+    FROM intraocular_pressure iop
+    JOIN medical_visit mv ON mv.visit_id = iop.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id;
+    RETURN v_max;
+END $$
+DELIMITER ;
+```
+
 ### 20.
 
 Crear una función que retorne la PIO mínima registrada.
+
+```sql
+DROP FUNCTION IF EXISTS fn_get_min_pio;
+DELIMITER $$
+CREATE FUNCTION fn_get_min_pio(
+    p_patient_id BIGINT
+)
+RETURNS DECIMAL(6,2)
+READS SQL DATA
+BEGIN
+    DECLARE v_min DECIMAL(6,2);
+    SELECT MIN(iop.pressure_value) INTO v_min
+    FROM intraocular_pressure iop
+    JOIN medical_visit mv ON mv.visit_id = iop.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id;
+    RETURN v_min;
+END $$
+DELIMITER ;
+```
 
 ## Funciones clínicas y de clasificación
 
@@ -5955,41 +8907,251 @@ Crear una función que retorne la PIO mínima registrada.
 
 Crear una función que clasifique una PIO según rangos definidos para fines académicos.
 
+```sql
+DROP FUNCTION IF EXISTS fn_classify_pio;
+DELIMITER $$
+CREATE FUNCTION fn_classify_pio(
+    p_pio DECIMAL(6,2)
+)
+RETURNS VARCHAR(50)
+DETERMINISTIC
+BEGIN
+    IF p_pio IS NULL THEN RETURN 'No registrado';
+    ELSEIF p_pio < 10 THEN RETURN 'Baja / Hipotonía';
+    ELSEIF p_pio <= 21 THEN RETURN 'Rango Normal';
+    ELSEIF p_pio <= 29 THEN RETURN 'Sospechosa / Moderada';
+    ELSE RETURN 'Severamente Elevada';
+    END IF;
+END $$
+DELIMITER ;
+```
+
 ### 22.
 
 Crear una función que indique si una PIO supera una presión objetivo recibida como parámetro.
+
+```sql
+DROP FUNCTION IF EXISTS fn_is_pio_above_target;
+DELIMITER $$
+CREATE FUNCTION fn_is_pio_above_target(
+    p_pio DECIMAL(6,2),
+    p_target DECIMAL(6,2)
+)
+RETURNS BOOLEAN
+DETERMINISTIC
+BEGIN
+    IF p_pio > p_target THEN
+        RETURN TRUE;
+    ELSE
+        RETURN FALSE;
+    END IF;
+END $$
+DELIMITER ;
+```
 
 ### 23.
 
 Crear una función que determine si un paciente tiene diagnóstico de glaucoma.
 
+```sql
+DROP FUNCTION IF EXISTS fn_has_glaucoma;
+DELIMITER $$
+CREATE FUNCTION fn_has_glaucoma(
+    p_patient_id BIGINT
+)
+RETURNS BOOLEAN
+READS SQL DATA
+BEGIN
+    IF EXISTS (SELECT 1 FROM glaucoma_record WHERE patient_id = p_patient_id AND active = TRUE) THEN
+        RETURN TRUE;
+    ELSE
+        RETURN FALSE;
+    END IF;
+END $$
+DELIMITER ;
+```
+
 ### 24.
 
 Crear una función que determine si un paciente tiene tratamientos activos.
+
+```sql
+DROP FUNCTION IF EXISTS fn_has_active_treatments;
+DELIMITER $$
+CREATE FUNCTION fn_has_active_treatments(
+    p_patient_id BIGINT
+)
+RETURNS BOOLEAN
+READS SQL DATA
+BEGIN
+    DECLARE v_count INT;
+    SELECT COUNT(t.treatment_id) INTO v_count
+    FROM treatment t
+    JOIN treatment_status ts ON ts.treatment_status_id = t.treatment_status_id
+    JOIN medical_visit mv ON mv.visit_id = t.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id AND ts.name = 'Activo';
+
+    RETURN IF(v_count > 0, TRUE, FALSE);
+END $$
+DELIMITER ;
+```
 
 ### 25.
 
 Crear una función que indique si el paciente tiene al menos un OCT registrado.
 
+```sql
+DROP FUNCTION IF EXISTS fn_has_oct;
+DELIMITER $$
+CREATE FUNCTION fn_has_oct(
+    p_patient_id BIGINT
+)
+RETURNS BOOLEAN
+READS SQL DATA
+BEGIN
+    DECLARE v_count INT;
+    SELECT COUNT(ce.clinical_exam_id) INTO v_count
+    FROM clinical_exam ce
+    JOIN exam_type et ON et.exam_type_id = ce.exam_type_id
+    JOIN medical_visit mv ON mv.visit_id = ce.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id AND et.name LIKE '%OCT%';
+
+    RETURN IF(v_count > 0, TRUE, FALSE);
+END $$
+DELIMITER ;
+```
+
 ### 26.
 
 Crear una función que indique si tiene campo visual registrado.
+
+```sql
+DROP FUNCTION IF EXISTS fn_has_visual_field;
+DELIMITER $$
+CREATE FUNCTION fn_has_visual_field(
+    p_patient_id BIGINT
+)
+RETURNS BOOLEAN
+READS SQL DATA
+BEGIN
+    DECLARE v_count INT;
+    SELECT COUNT(ce.clinical_exam_id) INTO v_count
+    FROM clinical_exam ce
+    JOIN exam_type et ON et.exam_type_id = ce.exam_type_id
+    JOIN medical_visit mv ON mv.visit_id = ce.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id AND (et.name LIKE '%Campo visual%' OR et.name LIKE '%Campimetría%');
+
+    RETURN IF(v_count > 0, TRUE, FALSE);
+END $$
+DELIMITER ;
+```
 
 ### 27.
 
 Crear una función que determine si tiene paquimetría.
 
+```sql
+DROP FUNCTION IF EXISTS fn_has_pachymetry;
+DELIMITER $$
+CREATE FUNCTION fn_has_pachymetry(
+    p_patient_id BIGINT
+)
+RETURNS BOOLEAN
+READS SQL DATA
+BEGIN
+    DECLARE v_count INT;
+    SELECT COUNT(ce.clinical_exam_id) INTO v_count
+    FROM clinical_exam ce
+    JOIN exam_type et ON et.exam_type_id = ce.exam_type_id
+    JOIN medical_visit mv ON mv.visit_id = ce.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id AND et.name LIKE '%Paquimetría%';
+
+    RETURN IF(v_count > 0, TRUE, FALSE);
+END $$
+DELIMITER ;
+```
+
 ### 28.
 
 Crear una función que determine si el paciente tiene controles pendientes según un número de meses.
+
+```sql
+DROP FUNCTION IF EXISTS fn_has_pending_control;
+DELIMITER $$
+CREATE FUNCTION fn_has_pending_control(
+    p_patient_id BIGINT,
+    p_months INT
+)
+RETURNS BOOLEAN
+READS SQL DATA
+BEGIN
+    DECLARE v_last_date DATETIME;
+    SELECT MAX(mv.visit_date) INTO v_last_date
+    FROM medical_visit mv
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id;
+
+    IF v_last_date IS NULL OR v_last_date < DATE_SUB(CURDATE(), INTERVAL p_months MONTH) THEN
+        RETURN TRUE;
+    ELSE
+        RETURN FALSE;
+    END IF;
+END $$
+DELIMITER ;
+```
 
 ### 29.
 
 Crear una función que clasifique un paciente según cantidad de consultas: nuevo, recurrente o frecuente.
 
+```sql
+DROP FUNCTION IF EXISTS fn_classify_patient_loyalty;
+DELIMITER $$
+CREATE FUNCTION fn_classify_patient_loyalty(
+    p_patient_id BIGINT
+)
+RETURNS VARCHAR(30)
+READS SQL DATA
+BEGIN
+    DECLARE v_count INT;
+    SELECT COUNT(mv.visit_id) INTO v_count
+    FROM medical_visit mv
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id;
+
+    IF v_count <= 1 THEN RETURN 'Nuevo';
+    ELSEIF v_count <= 4 THEN RETURN 'Recurrente';
+    ELSE RETURN 'Frecuente';
+    END IF;
+END $$
+DELIMITER ;
+```
+
 ### 30.
 
-Crear una función que retorne `Completo` si el paciente tiene OCT, campo visual, PIO y paquimetría, o `Incompleto` en caso contrario.
+Crear una función que retorne Completo si el paciente tiene OCT, campo visual, PIO y paquimetría, o Incompleto en caso contrario.
+
+```sql
+DROP FUNCTION IF EXISTS fn_check_patient_exams_complete;
+DELIMITER $$
+CREATE FUNCTION fn_check_patient_exams_complete(
+    p_patient_id BIGINT
+)
+RETURNS VARCHAR(20)
+READS SQL DATA
+BEGIN
+    IF fn_has_oct(p_patient_id) AND fn_has_visual_field(p_patient_id) AND fn_has_pachymetry(p_patient_id) AND (fn_get_max_pio(p_patient_id) IS NOT NULL) THEN
+        RETURN 'Completo';
+    ELSE
+        RETURN 'Incompleto';
+    END IF;
+END $$
+DELIMITER ;
+```
 
 ## Funciones estadísticas
 
@@ -5997,41 +9159,270 @@ Crear una función que retorne `Completo` si el paciente tiene OCT, campo visual
 
 Crear una función que calcule el promedio de PIO entre dos fechas para un paciente.
 
+```sql
+DROP FUNCTION IF EXISTS fn_get_avg_pio_between_dates;
+DELIMITER $$
+CREATE FUNCTION fn_get_avg_pio_between_dates(
+    p_patient_id BIGINT,
+    p_start_date DATETIME,
+    p_end_date DATETIME
+)
+RETURNS DECIMAL(6,2)
+READS SQL DATA
+BEGIN
+    DECLARE v_avg DECIMAL(6,2);
+    SELECT AVG(iop.pressure_value) INTO v_avg
+    FROM intraocular_pressure iop
+    JOIN medical_visit mv ON mv.visit_id = iop.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id
+      AND iop.measured_at BETWEEN p_start_date AND p_end_date;
+    RETURN v_avg;
+END $$
+DELIMITER ;
+```
+
 ### 32.
 
 Crear una función que calcule la diferencia entre la primera y última PIO.
+
+```sql
+DROP FUNCTION IF EXISTS fn_get_pio_difference;
+DELIMITER $$
+CREATE FUNCTION fn_get_pio_difference(
+    p_patient_id BIGINT
+)
+RETURNS DECIMAL(6,2)
+READS SQL DATA
+BEGIN
+    DECLARE v_first DECIMAL(6,2);
+    DECLARE v_last DECIMAL(6,2);
+
+    SELECT iop.pressure_value INTO v_first
+    FROM intraocular_pressure iop
+    JOIN medical_visit mv ON mv.visit_id = iop.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id
+    ORDER BY iop.measured_at ASC LIMIT 1;
+
+    SELECT iop.pressure_value INTO v_last
+    FROM intraocular_pressure iop
+    JOIN medical_visit mv ON mv.visit_id = iop.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id
+    ORDER BY iop.measured_at DESC LIMIT 1;
+
+    RETURN v_last - v_first;
+END $$
+DELIMITER ;
+```
 
 ### 33.
 
 Crear una función que retorne el número de días desde la última consulta.
 
+```sql
+DROP FUNCTION IF EXISTS fn_days_since_last_visit;
+DELIMITER $$
+CREATE FUNCTION fn_days_since_last_visit(
+    p_patient_id BIGINT
+)
+RETURNS INT
+READS SQL DATA
+BEGIN
+    DECLARE v_date DATETIME;
+    SELECT MAX(mv.visit_date) INTO v_date
+    FROM medical_visit mv
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id;
+
+    IF v_date IS NULL THEN RETURN NULL; END IF;
+    RETURN DATEDIFF(CURDATE(), v_date);
+END $$
+DELIMITER ;
+```
+
 ### 34.
 
 Crear una función que retorne el número de meses desde el último OCT.
+
+```sql
+DROP FUNCTION IF EXISTS fn_months_since_last_oct;
+DELIMITER $$
+CREATE FUNCTION fn_months_since_last_oct(
+    p_patient_id BIGINT
+)
+RETURNS INT
+READS SQL DATA
+BEGIN
+    DECLARE v_date DATETIME;
+    SELECT MAX(ce.exam_date) INTO v_date
+    FROM clinical_exam ce
+    JOIN exam_type et ON et.exam_type_id = ce.exam_type_id
+    JOIN medical_visit mv ON mv.visit_id = ce.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id AND et.name LIKE '%OCT%';
+
+    IF v_date IS NULL THEN RETURN NULL; END IF;
+    RETURN TIMESTAMPDIFF(MONTH, v_date, CURDATE());
+END $$
+DELIMITER ;
+```
 
 ### 35.
 
 Crear una función que retorne el número de meses desde el último campo visual.
 
+```sql
+DROP FUNCTION IF EXISTS fn_months_since_last_vf;
+DELIMITER $$
+CREATE FUNCTION fn_months_since_last_vf(
+    p_patient_id BIGINT
+)
+RETURNS INT
+READS SQL DATA
+BEGIN
+    DECLARE v_date DATETIME;
+    SELECT MAX(ce.exam_date) INTO v_date
+    FROM clinical_exam ce
+    JOIN exam_type et ON et.exam_type_id = ce.exam_type_id
+    JOIN medical_visit mv ON mv.visit_id = ce.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id AND (et.name LIKE '%Campo visual%' OR et.name LIKE '%Campimetría%');
+
+    IF v_date IS NULL THEN RETURN NULL; END IF;
+    RETURN TIMESTAMPDIFF(MONTH, v_date, CURDATE());
+END $$
+DELIMITER ;
+```
+
 ### 36.
 
 Crear una función que calcule el promedio de RNFL de los OCT de un paciente.
+
+```sql
+DROP FUNCTION IF EXISTS fn_get_avg_rnfl;
+DELIMITER $$
+CREATE FUNCTION fn_get_avg_rnfl(
+    p_patient_id BIGINT
+)
+RETURNS DECIMAL(12,4)
+READS SQL DATA
+BEGIN
+    DECLARE v_avg DECIMAL(12,4);
+    SELECT AVG(er.value_numeric) INTO v_avg
+    FROM exam_result er
+    JOIN clinical_exam ce ON ce.clinical_exam_id = er.clinical_exam_id
+    JOIN exam_type et ON et.exam_type_id = ce.exam_type_id
+    JOIN medical_visit mv ON mv.visit_id = ce.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id AND et.name LIKE '%OCT%';
+    RETURN v_avg;
+END $$
+DELIMITER ;
+```
 
 ### 37.
 
 Crear una función que retorne el valor más reciente de RNFL.
 
+```sql
+DROP FUNCTION IF EXISTS fn_get_latest_rnfl;
+DELIMITER $$
+CREATE FUNCTION fn_get_latest_rnfl(
+    p_patient_id BIGINT
+)
+RETURNS DECIMAL(12,4)
+READS SQL DATA
+BEGIN
+    DECLARE v_val DECIMAL(12,4);
+    SELECT er.value_numeric INTO v_val
+    FROM exam_result er
+    JOIN clinical_exam ce ON ce.clinical_exam_id = er.clinical_exam_id
+    JOIN exam_type et ON et.exam_type_id = ce.exam_type_id
+    JOIN medical_visit mv ON mv.visit_id = ce.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id AND et.name LIKE '%OCT%'
+    ORDER BY ce.exam_date DESC LIMIT 1;
+    RETURN v_val;
+END $$
+DELIMITER ;
+```
+
 ### 38.
 
 Crear una función que calcule el promedio de VFI de un paciente.
+
+```sql
+DROP FUNCTION IF EXISTS fn_get_avg_vfi;
+DELIMITER $$
+CREATE FUNCTION fn_get_avg_vfi(
+    p_patient_id BIGINT
+)
+RETURNS DECIMAL(12,4)
+READS SQL DATA
+BEGIN
+    DECLARE v_avg DECIMAL(12,4);
+    SELECT AVG(er.value_numeric) INTO v_avg
+    FROM exam_result er
+    JOIN clinical_exam ce ON ce.clinical_exam_id = er.clinical_exam_id
+    JOIN exam_type et ON et.exam_type_id = ce.exam_type_id
+    JOIN medical_visit mv ON mv.visit_id = ce.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id AND (et.name LIKE '%Campo visual%' OR et.name LIKE '%Campimetría%');
+    RETURN v_avg;
+END $$
+DELIMITER ;
+```
 
 ### 39.
 
 Crear una función que retorne la cantidad de tratamientos históricos.
 
+```sql
+DROP FUNCTION IF EXISTS fn_count_historical_treatments;
+DELIMITER $$
+CREATE FUNCTION fn_count_historical_treatments(
+    p_patient_id BIGINT
+)
+RETURNS INT
+READS SQL DATA
+BEGIN
+    DECLARE v_count INT;
+    SELECT COUNT(t.treatment_id) INTO v_count
+    FROM treatment t
+    JOIN medical_visit mv ON mv.visit_id = t.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id;
+    RETURN IFNULL(v_count, 0);
+END $$
+DELIMITER ;
+```
+
 ### 40.
 
 Crear una función que retorne la cantidad de medicamentos diferentes utilizados por un paciente.
+
+```sql
+DROP FUNCTION IF EXISTS fn_count_distinct_medications;
+DELIMITER $$
+CREATE FUNCTION fn_count_distinct_medications(
+    p_patient_id BIGINT
+)
+RETURNS INT
+READS SQL DATA
+BEGIN
+    DECLARE v_count INT;
+    SELECT COUNT(DISTINCT tm.medication_id) INTO v_count
+    FROM treatment_medication tm
+    JOIN treatment t ON t.treatment_id = tm.treatment_id
+    JOIN medical_visit mv ON mv.visit_id = t.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id;
+    RETURN IFNULL(v_count, 0);
+END $$
+DELIMITER ;
+```
 
 ## Funciones avanzadas
 
@@ -6039,50 +9430,299 @@ Crear una función que retorne la cantidad de medicamentos diferentes utilizados
 
 Crear una función que reciba paciente y ojo y retorne la última PIO registrada.
 
+```sql
+DROP FUNCTION IF EXISTS fn_get_last_pio_by_eye;
+DELIMITER $$
+CREATE FUNCTION fn_get_last_pio_by_eye(
+    p_patient_id BIGINT,
+    p_eye_code VARCHAR(20)
+)
+RETURNS DECIMAL(6,2)
+READS SQL DATA
+BEGIN
+    DECLARE v_val DECIMAL(6,2);
+    SELECT iop.pressure_value INTO v_val
+    FROM intraocular_pressure iop
+    JOIN medical_visit mv ON mv.visit_id = iop.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    JOIN eye e ON e.eye_id = iop.eye_id
+    WHERE ch.patient_id = p_patient_id AND e.code = p_eye_code
+    ORDER BY iop.measured_at DESC LIMIT 1;
+    RETURN v_val;
+END $$
+DELIMITER ;
+```
+
 ### 42.
 
 Crear una función que reciba paciente y ojo y retorne la PIO promedio.
+
+```sql
+DROP FUNCTION IF EXISTS fn_get_avg_pio_by_eye;
+DELIMITER $$
+CREATE FUNCTION fn_get_avg_pio_by_eye(
+    p_patient_id BIGINT,
+    p_eye_code VARCHAR(20)
+)
+RETURNS DECIMAL(6,2)
+READS SQL DATA
+BEGIN
+    DECLARE v_avg DECIMAL(6,2);
+    SELECT AVG(iop.pressure_value) INTO v_avg
+    FROM intraocular_pressure iop
+    JOIN medical_visit mv ON mv.visit_id = iop.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    JOIN eye e ON e.eye_id = iop.eye_id
+    WHERE ch.patient_id = p_patient_id AND e.code = p_eye_code;
+    RETURN v_avg;
+END $$
+DELIMITER ;
+```
 
 ### 43.
 
 Crear una función que determine si la última PIO es mayor o menor que la primera.
 
+```sql
+DROP FUNCTION IF EXISTS fn_compare_first_last_pio;
+DELIMITER $$
+CREATE FUNCTION fn_compare_first_last_pio(
+    p_patient_id BIGINT
+)
+RETURNS VARCHAR(20)
+READS SQL DATA
+BEGIN
+    DECLARE v_first DECIMAL(6,2);
+    DECLARE v_last DECIMAL(6,2);
+
+    SELECT iop.pressure_value INTO v_first
+    FROM intraocular_pressure iop
+    JOIN medical_visit mv ON mv.visit_id = iop.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id
+    ORDER BY iop.measured_at ASC LIMIT 1;
+
+    SELECT iop.pressure_value INTO v_last
+    FROM intraocular_pressure iop
+    JOIN medical_visit mv ON mv.visit_id = iop.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id
+    ORDER BY iop.measured_at DESC LIMIT 1;
+
+    IF v_last > v_first THEN RETURN 'Mayor';
+    ELSEIF v_last < v_first THEN RETURN 'Menor';
+    ELSE RETURN 'Igual';
+    END IF;
+END $$
+DELIMITER ;
+```
+
 ### 44.
 
 Crear una función que retorne la diferencia porcentual entre primera y última PIO.
+
+```sql
+DROP FUNCTION IF EXISTS fn_get_pio_percent_diff;
+DELIMITER $$
+CREATE FUNCTION fn_get_pio_percent_diff(
+    p_patient_id BIGINT
+)
+RETURNS DECIMAL(6,2)
+READS SQL DATA
+BEGIN
+    DECLARE v_first DECIMAL(6,2);
+    DECLARE v_last DECIMAL(6,2);
+
+    SELECT iop.pressure_value INTO v_first
+    FROM intraocular_pressure iop
+    JOIN medical_visit mv ON mv.visit_id = iop.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id
+    ORDER BY iop.measured_at ASC LIMIT 1;
+
+    SELECT iop.pressure_value INTO v_last
+    FROM intraocular_pressure iop
+    JOIN medical_visit mv ON mv.visit_id = iop.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id
+    ORDER BY iop.measured_at DESC LIMIT 1;
+
+    IF v_first IS NULL OR v_first = 0 THEN RETURN 0; END IF;
+    RETURN ((v_last - v_first) / v_first) * 100;
+END $$
+DELIMITER ;
+```
 
 ### 45.
 
 Crear una función que retorne el diagnóstico principal más reciente de un paciente.
 
+```sql
+DROP FUNCTION IF EXISTS fn_get_latest_main_diagnosis;
+DELIMITER $$
+CREATE FUNCTION fn_get_latest_main_diagnosis(
+    p_patient_id BIGINT
+)
+RETURNS VARCHAR(200)
+READS SQL DATA
+BEGIN
+    DECLARE v_diag VARCHAR(200);
+    SELECT d.name INTO v_diag
+    FROM visit_diagnosis vd
+    JOIN diagnosis d ON d.diagnosis_id = vd.diagnosis_id
+    JOIN medical_visit mv ON mv.visit_id = vd.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id AND vd.diagnosis_type = 'Principal'
+    ORDER BY mv.visit_date DESC LIMIT 1;
+    RETURN v_diag;
+END $$
+DELIMITER ;
+```
+
 ### 46.
 
 Crear una función que retorne el nombre del medicamento activo más reciente.
+
+```sql
+DROP FUNCTION IF EXISTS fn_get_latest_active_medication;
+DELIMITER $$
+CREATE FUNCTION fn_get_latest_active_medication(
+    p_patient_id BIGINT
+)
+RETURNS VARCHAR(150)
+READS SQL DATA
+BEGIN
+    DECLARE v_med VARCHAR(150);
+    SELECT m.name INTO v_med
+    FROM treatment_medication tm
+    JOIN medication m ON m.medication_id = tm.medication_id
+    JOIN treatment t ON t.treatment_id = tm.treatment_id
+    JOIN treatment_status ts ON ts.treatment_status_id = t.treatment_status_id
+    JOIN medical_visit mv ON mv.visit_id = t.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id AND ts.name = 'Activo'
+    ORDER BY t.start_date DESC LIMIT 1;
+    RETURN v_med;
+END $$
+DELIMITER ;
+```
 
 ### 47.
 
 Crear una función que retorne la cantidad de procedimientos realizados a un paciente.
 
+```sql
+DROP FUNCTION IF EXISTS fn_count_patient_procedures;
+DELIMITER $$
+CREATE FUNCTION fn_count_patient_procedures(
+    p_patient_id BIGINT
+)
+RETURNS INT
+READS SQL DATA
+BEGIN
+    DECLARE v_count INT;
+    SELECT COUNT(vp.visit_procedure_id) INTO v_count
+    FROM visit_procedure vp
+    JOIN medical_visit mv ON mv.visit_id = vp.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id;
+    RETURN IFNULL(v_count, 0);
+END $$
+DELIMITER ;
+```
+
 ### 48.
 
 Crear una función que determine si un profesional ha atendido alguna vez a un paciente específico.
+
+```sql
+DROP FUNCTION IF EXISTS fn_has_professional_attended_patient;
+DELIMITER $$
+CREATE FUNCTION fn_has_professional_attended_patient(
+    p_professional_id BIGINT,
+    p_patient_id BIGINT
+)
+RETURNS BOOLEAN
+READS SQL DATA
+BEGIN
+    DECLARE v_count INT;
+    SELECT COUNT(mv.visit_id) INTO v_count
+    FROM medical_visit mv
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE mv.professional_id = p_professional_id AND ch.patient_id = p_patient_id;
+
+    RETURN IF(v_count > 0, TRUE, FALSE);
+END $$
+DELIMITER ;
+```
 
 ### 49.
 
 Crear una función que calcule la cantidad total de exámenes especializados registrados para un paciente.
 
+```sql
+DROP FUNCTION IF EXISTS fn_count_specialized_exams;
+DELIMITER $$
+CREATE FUNCTION fn_count_specialized_exams(
+    p_patient_id BIGINT
+)
+RETURNS INT
+READS SQL DATA
+BEGIN
+    DECLARE v_count INT;
+    SELECT COUNT(ce.clinical_exam_id) INTO v_count
+    FROM clinical_exam ce
+    JOIN medical_visit mv ON mv.visit_id = ce.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id;
+    RETURN IFNULL(v_count, 0);
+END $$
+DELIMITER ;
+```
+
 ### 50.
 
-Crear una función que genere un resumen textual como:
+Crear una función que genere un resumen textual como: Paciente: Carlos Gómez Consultas: 8 Controles glaucoma: 4 Última PIO OD: 18 Última PIO OI: 17 Tratamientos activos: 2 a partir del ID del paciente.
 
+```sql
+DROP FUNCTION IF EXISTS fn_generate_patient_text_summary;
+DELIMITER $$
+CREATE FUNCTION fn_generate_patient_text_summary(
+    p_patient_id BIGINT
+)
+RETURNS TEXT
+READS SQL DATA
+BEGIN
+    DECLARE v_name VARCHAR(200);
+    DECLARE v_visits INT;
+    DECLARE v_glaucoma INT;
+    DECLARE v_pio_od DECIMAL(6,2);
+    DECLARE v_pio_oi DECIMAL(6,2);
+    DECLARE v_treatments INT;
+
+    SELECT CONCAT(pe.first_name, ' ', pe.last_name) INTO v_name
+    FROM patient p JOIN person pe ON pe.person_id = p.person_id WHERE p.patient_id = p_patient_id;
+
+    SET v_visits = fn_count_patient_visits(p_patient_id);
+    SET v_glaucoma = fn_count_glaucoma_controls(p_patient_id);
+    SET v_pio_od = fn_get_last_pio_by_eye(p_patient_id, 'OD');
+    SET v_pio_oi = fn_get_last_pio_by_eye(p_patient_id, 'OI');
+
+    SELECT COUNT(t.treatment_id) INTO v_treatments
+    FROM treatment t
+    JOIN treatment_status ts ON ts.treatment_status_id = t.treatment_status_id
+    JOIN medical_visit mv ON mv.visit_id = t.visit_id
+    JOIN clinical_history ch ON ch.clinical_history_id = mv.clinical_history_id
+    WHERE ch.patient_id = p_patient_id AND ts.name = 'Activo';
+
+    RETURN CONCAT(
+        'Paciente: ', IFNULL(v_name,'N/A'),'\n',
+        'Consultas: ', v_visits,'\n',
+        'Controles glaucoma: ', v_glaucoma,'\n',
+        'Última PIO OD: ', IFNULL(v_pio_od, 0),'\n',
+        'Última PIO OI: ', IFNULL(v_pio_oi, 0),'\n',
+        'Tratamientos activos: ', IFNULL(v_treatments, 0)
+    );
+END $$
+DELIMITER ;
 ```
-Paciente: Carlos Gómez
-Consultas: 8
-Controles glaucoma: 4
-Última PIO OD: 18
-Última PIO OI: 17
-Tratamientos activos: 2
-```
-
-a partir del ID del paciente.
-
