@@ -9726,3 +9726,96 @@ BEGIN
 END $$
 DELIMITER ;
 ```
+
+## Consultas de practica :
+
+RF-01: Consolidado de Prevalencia Diagnóstica (DQL Analítico)
+Enunciado:
+
+1. "El sistema debe generar un informe analítico de prevalencia de patologías por periodo. Dados un rango de fechas de inicio y fin, la consulta debe retornar el Top 5 de diagnósticos con mayor frecuencia registrada, detallando: nombre del diagnóstico, total de atenciones realizadas, número de pacientes únicos atendidos y el porcentaje que representa cada diagnóstico frente al total de consultas del periodo."
+
+Parámetros de Entrada
+
+```sql
+SELECT 
+    d.code AS codigo_cie10,
+    d.name AS diagnostico,
+    COUNT(DISTINCT ch.patient_id) AS pacientes_unicos,
+    COUNT(vd.visit_id) AS total_atenciones,
+    ROUND(
+        (COUNT(vd.visit_id) * 100.0) / (
+            SELECT COUNT(*) 
+            FROM medical_visit 
+            WHERE visit_date BETWEEN '2026-01-01 00:00:00' AND '2026-12-31 23:59:59'
+        ), 2
+    ) AS porcentaje_prevalencia
+FROM medical_visit mv
+INNER JOIN clinical_history ch ON mv.clinical_history_id = ch.clinical_history_id
+INNER JOIN visit_diagnosis vd ON mv.visit_id = vd.visit_id
+INNER JOIN diagnosis d ON vd.diagnosis_id = d.diagnosis_id
+WHERE mv.visit_date BETWEEN '2026-01-01 00:00:00' AND '2026-12-31 23:59:59'
+GROUP BY d.diagnosis_id, d.code, d.name
+ORDER BY total_atenciones DESC
+LIMIT 5;
+```
+
+2. RF-02: Procedimiento Transaccional de Cierre de Atención (STORED PROCEDURE) Enunciado de Examen: "Diseñe el procedimiento almacenado sp_registrar_atencion_completa. Dado el identificador de una cita (appointment_id), la historia clínica (clinical_history_id), el tipo de visita, el diagnóstico y el estado del tratamiento, el sistema debe efectuar las siguientes acciones en un bloque atómico (TRANSACTION): 1) Insertar la visita médica en medical_visit, 2) Vincular el diagnóstico en visit_diagnosis, 3) Registrar la orden de tratamiento en treatment y 4) Actualizar el estado de la cita en appointment a 'Atendido'."
+
+   ```sql
+   DELIMITER //
+   
+   CREATE PROCEDURE sp_registrar_atencion_completa(
+       IN p_appointment_id BIGINT,
+       IN p_clinical_history_id BIGINT,
+       IN p_professional_id BIGINT,
+       IN p_visit_type_id BIGINT,
+       IN p_diagnosis_id BIGINT,
+       IN p_treatment_status_id BIGINT,
+       IN p_treatment_description TEXT,
+       IN p_observations TEXT
+   )
+   BEGIN
+       DECLARE v_visit_id BIGINT;
+   
+       -- Revertir transacción si ocurre cualquier error SQL
+       DECLARE EXIT HANDLER FOR SQLEXCEPTION 
+       BEGIN
+           ROLLBACK;
+           RESIGNAL;
+       END;
+   
+       START TRANSACTION;
+   
+           -- 1. Insertar la visita médica
+           INSERT INTO medical_visit (
+               clinical_history_id, appointment_id, professional_id, 
+               visit_type_id, visit_date, observations
+           ) VALUES (
+               p_clinical_history_id, p_appointment_id, p_professional_id, 
+               p_visit_type_id, NOW(), p_observations
+           );
+   
+           SET v_visit_id = LAST_INSERT_ID();
+   
+           -- 2. Registrar el diagnóstico asociado
+           INSERT INTO visit_diagnosis (visit_id, diagnosis_id, diagnosis_type, observations)
+           VALUES (v_visit_id, p_diagnosis_id, 'PRINCIPAL', 'Diagnóstico en consulta de control');
+   
+           -- 3. Crear el plan de tratamiento
+           INSERT INTO treatment (visit_id, treatment_status_id, description, start_date)
+           VALUES (v_visit_id, p_treatment_status_id, p_treatment_description, CURDATE());
+   
+           -- 4. Actualizar estado de la cita (asumiendo appointment_status_id = 3 para 'ATENDIDA')
+           UPDATE appointment 
+           SET appointment_status_id = 3 
+           WHERE appointment_id = p_appointment_id;
+   
+       COMMIT;
+   END //
+   
+   DELIMITER ;
+   ```
+
+   
+
+3. 
